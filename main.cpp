@@ -213,10 +213,19 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
     {
         if (ImGui::BeginTabItem("Processes"))
         {
+            // Text input filter
+            static char filterText[128] = "";
+            ImGui::InputText("Filter by Name", filterText, sizeof(filterText));
+            ImGui::SameLine();
+            if (ImGui::Button("Clear"))
+            {
+                filterText[0] = '\0';
+            }
+
             ImGui::BeginChild("ProcTableChild", ImVec2(0, 0), true);
             if (ImGui::BeginTable("ProcessTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
             {
-                ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 60.0f);
                 ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
                 ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 50.0f);
                 ImGui::TableSetupColumn("CPU %", ImGuiTableColumnFlags_WidthFixed, 60.0f);
@@ -224,22 +233,58 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
                 ImGui::TableHeadersRow();
 
                 vector<Proc> processes = getProcesses(mem.ramTotal);
+                static std::set<int> selectedPids;
+
+                std::string filterStr = filterText;
+                std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(),
+                               [](unsigned char c) { return std::tolower(c); });
+
                 for (const auto &p : processes)
                 {
+                    // Filter match
+                    if (!filterStr.empty())
+                    {
+                        std::string procNameLower = p.name;
+                        std::transform(procNameLower.begin(), procNameLower.end(), procNameLower.begin(),
+                                       [](unsigned char c) { return std::tolower(c); });
+                        if (procNameLower.find(filterStr) == std::string::npos)
+                        {
+                            continue;
+                        }
+                    }
+
                     ImGui::TableNextRow();
                     
+                    // PID (Selectable row)
                     ImGui::TableSetColumnIndex(0);
-                    ImGui::Text("%d", p.pid);
+                    char pidStr[32];
+                    snprintf(pidStr, sizeof(pidStr), "%d", p.pid);
+                    bool isSelected = (selectedPids.count(p.pid) > 0);
+                    if (ImGui::Selectable(pidStr, isSelected, ImGuiSelectableFlags_SpanAllColumns))
+                    {
+                        if (isSelected)
+                        {
+                            selectedPids.erase(p.pid);
+                        }
+                        else
+                        {
+                            selectedPids.insert(p.pid);
+                        }
+                    }
                     
+                    // Name
                     ImGui::TableSetColumnIndex(1);
                     ImGui::Text("%s", p.name.c_str());
                     
+                    // State
                     ImGui::TableSetColumnIndex(2);
                     ImGui::Text("%c", p.state);
                     
+                    // CPU %
                     ImGui::TableSetColumnIndex(3);
                     ImGui::Text("%.1f%%", p.cpuUsage);
                     
+                    // Memory %
                     ImGui::TableSetColumnIndex(4);
                     ImGui::Text("%.1f%%", p.memUsage);
                 }

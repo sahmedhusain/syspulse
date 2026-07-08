@@ -37,6 +37,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <map>
+#include <set>
+#include <algorithm>
 
 using namespace std;
 
