@@ -57,11 +57,68 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     
     TaskCounts tasks = getTaskCounts();
     ImGui::Text("Tasks: %d total", tasks.total);
-    ImGui::BulletText("Running: %d", tasks.running);
-    ImGui::BulletText("Sleeping: %d", tasks.sleeping);
-    ImGui::BulletText("Uninterruptible: %d", tasks.uninterruptible);
-    ImGui::BulletText("Zombie: %d", tasks.zombie);
-    ImGui::BulletText("Stopped: %d", tasks.stopped);
+    ImGui::BulletText("Running: %d | Sleeping: %d | Stopped: %d | Zombie: %d",
+                      tasks.running, tasks.sleeping, tasks.stopped, tasks.zombie);
+
+    ImGui::Separator();
+
+    // Shared graph controls
+    static bool stopAnimation = false;
+    static float graphFPS = 5.0f; // Default 5 updates per second
+    static float yScale = 100.0f; // Default scale is 0 to 100
+
+    ImGui::Checkbox("Pause Graph Animation", &stopAnimation);
+    ImGui::SliderFloat("Graph FPS", &graphFPS, 1.0f, 60.0f, "%.1f FPS");
+    ImGui::SliderFloat("Y Scale Limit", &yScale, 10.0f, 100.0f, "%.1f");
+
+    // History buffer for CPU
+    static std::vector<float> cpuHistory(100, 0.0f);
+    static float timeAccumulator = 0.0f;
+    static float currentCPUVal = 0.0f;
+
+    // Timer logic to sample values based on graphFPS
+    float deltaTime = ImGui::GetIO().DeltaTime;
+    timeAccumulator += deltaTime;
+    float samplePeriod = 1.0f / graphFPS;
+
+    if (timeAccumulator >= samplePeriod)
+    {
+        currentCPUVal = getCPUUsage();
+        if (!stopAnimation)
+        {
+            // Shift history
+            for (size_t i = 0; i < (int)cpuHistory.size() - 1; ++i)
+            {
+                cpuHistory[i] = cpuHistory[i + 1];
+            }
+            cpuHistory.back() = currentCPUVal;
+        }
+        timeAccumulator = 0.0f;
+    }
+
+    if (ImGui::BeginTabBar("SystemTabs"))
+    {
+        if (ImGui::BeginTabItem("CPU"))
+        {
+            char overlayText[32];
+            snprintf(overlayText, sizeof(overlayText), "Usage: %.1f%%", currentCPUVal);
+            
+            // Plot CPU lines
+            ImGui::PlotLines("CPU Usage", cpuHistory.data(), (int)cpuHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(-1, 150));
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Fan"))
+        {
+            ImGui::Text("Fan stats placeholder");
+            ImGui::EndTabItem();
+        }
+        if (ImGui::BeginTabItem("Thermal"))
+        {
+            ImGui::Text("Thermal stats placeholder");
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
 
     ImGui::End();
 }

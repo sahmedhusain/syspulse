@@ -191,3 +191,56 @@ TaskCounts getTaskCounts()
     closedir(dir);
     return counts;
 }
+
+float getCPUUsage()
+{
+    static long long prevUser = 0, prevNice = 0, prevSystem = 0, prevIdle = 0;
+    static long long prevIowait = 0, prevIrq = 0, prevSoftirq = 0, prevSteal = 0;
+
+    ifstream file("/proc/stat");
+    string label;
+    if (file.is_open())
+    {
+        file >> label;
+        if (label == "cpu")
+        {
+            long long user, nice, system, idle, iowait, irq, softirq, steal;
+            file >> user >> nice >> system >> idle >> iowait >> irq >> softirq >> steal;
+
+            long long prevActive = prevUser + prevNice + prevSystem + prevIrq + prevSoftirq + prevSteal;
+            long long active = user + nice + system + irq + softirq + steal;
+
+            long long prevIdleTotal = prevIdle + prevIowait;
+            long long idleTotal = idle + iowait;
+
+            long long prevTotal = prevActive + prevIdleTotal;
+            long long total = active + idleTotal;
+
+            long long diffTotal = total - prevTotal;
+            long long diffIdle = idleTotal - prevIdleTotal;
+
+            float usage = 0.0f;
+            if (diffTotal > 0)
+            {
+                usage = (float)(diffTotal - diffIdle) / diffTotal;
+            }
+
+            prevUser = user;
+            prevNice = nice;
+            prevSystem = system;
+            prevIdle = idle;
+            prevIowait = iowait;
+            prevIrq = irq;
+            prevSoftirq = softirq;
+            prevSteal = steal;
+
+            return usage * 100.0f;
+        }
+    }
+    // Fallback/Mock for macOS testing (simple random oscillation between 20% and 40%)
+    static float mockUsage = 30.0f;
+    mockUsage += ((rand() % 100) - 50) / 50.0f;
+    if (mockUsage < 5.0f) mockUsage = 5.0f;
+    if (mockUsage > 95.0f) mockUsage = 95.0f;
+    return mockUsage;
+}

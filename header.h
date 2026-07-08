@@ -118,6 +118,7 @@ string getLoggedInUser();
 string getHostName();
 string getCPUModel();
 TaskCounts getTaskCounts();
+float getCPUUsage();
 
 // student TODO : memory and processes
 
