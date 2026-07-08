@@ -422,7 +422,23 @@ FanStats getFanStats()
         return stats;
     }
 
-    // Fallback/Mock for macOS testing (simple random oscillation between 2000 and 4000 RPM)
+    // Fallback/Mock for macOS testing (handles fanless designs like MacBook Air)
+#ifdef __APPLE__
+    char model[128];
+    size_t size = sizeof(model);
+    if (sysctlbyname("hw.model", model, &size, NULL, 0) == 0)
+    {
+        string modelStr(model);
+        if (modelStr.find("Air") != string::npos)
+        {
+            stats.status = "N/A (Fanless)";
+            stats.level = "N/A";
+            stats.speed = 0;
+            return stats;
+        }
+    }
+#endif
+
     stats.status = "active";
     stats.level = "auto";
     static int mockSpeed = 3000;
