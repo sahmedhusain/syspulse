@@ -314,6 +314,85 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
     }
     ImGui::Spacing();
 
+    // Tab Bar for RX / TX Tables
+    if (ImGui::BeginTabBar("NetProcTabs"))
+    {
+        map<string, pair<TX, RX>> netStats = getNetworkStats();
+
+        if (ImGui::BeginTabItem("RX"))
+        {
+            if (ImGui::BeginTable("RXTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+            {
+                ImGui::TableSetupColumn("Interface");
+                ImGui::TableSetupColumn("Bytes");
+                ImGui::TableSetupColumn("Packets");
+                ImGui::TableSetupColumn("Errs");
+                ImGui::TableSetupColumn("Drop");
+                ImGui::TableSetupColumn("Fifo");
+                ImGui::TableSetupColumn("Frame");
+                ImGui::TableSetupColumn("Compressed");
+                ImGui::TableSetupColumn("Multicast");
+                ImGui::TableHeadersRow();
+
+                for (const auto &pair : netStats)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%s", pair.first.c_str());
+
+                    const TX &rx = pair.second.first; // Mapped to TX struct
+                    ImGui::TableSetColumnIndex(1); ImGui::Text("%d", rx.bytes);
+                    ImGui::TableSetColumnIndex(2); ImGui::Text("%d", rx.packets);
+                    ImGui::TableSetColumnIndex(3); ImGui::Text("%d", rx.errs);
+                    ImGui::TableSetColumnIndex(4); ImGui::Text("%d", rx.drop);
+                    ImGui::TableSetColumnIndex(5); ImGui::Text("%d", rx.fifo);
+                    ImGui::TableSetColumnIndex(6); ImGui::Text("%d", rx.frame);
+                    ImGui::TableSetColumnIndex(7); ImGui::Text("%d", rx.compressed);
+                    ImGui::TableSetColumnIndex(8); ImGui::Text("%d", rx.multicast);
+                }
+                ImGui::EndTable();
+            }
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("TX"))
+        {
+            if (ImGui::BeginTable("TXTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
+            {
+                ImGui::TableSetupColumn("Interface");
+                ImGui::TableSetupColumn("Bytes");
+                ImGui::TableSetupColumn("Packets");
+                ImGui::TableSetupColumn("Errs");
+                ImGui::TableSetupColumn("Drop");
+                ImGui::TableSetupColumn("Fifo");
+                ImGui::TableSetupColumn("Colls");
+                ImGui::TableSetupColumn("Carrier");
+                ImGui::TableSetupColumn("Compressed");
+                ImGui::TableHeadersRow();
+
+                for (const auto &pair : netStats)
+                {
+                    ImGui::TableNextRow();
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%s", pair.first.c_str());
+
+                    const RX &tx = pair.second.second; // Mapped to RX struct
+                    ImGui::TableSetColumnIndex(1); ImGui::Text("%d", tx.bytes);
+                    ImGui::TableSetColumnIndex(2); ImGui::Text("%d", tx.packets);
+                    ImGui::TableSetColumnIndex(3); ImGui::Text("%d", tx.errs);
+                    ImGui::TableSetColumnIndex(4); ImGui::Text("%d", tx.drop);
+                    ImGui::TableSetColumnIndex(5); ImGui::Text("%d", tx.fifo);
+                    ImGui::TableSetColumnIndex(6); ImGui::Text("%d", tx.colls);
+                    ImGui::TableSetColumnIndex(7); ImGui::Text("%d", tx.carrier);
+                    ImGui::TableSetColumnIndex(8); ImGui::Text("%d", tx.compressed);
+                }
+                ImGui::EndTable();
+            }
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+
     ImGui::End();
 }
 

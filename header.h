@@ -156,5 +156,6 @@ vector<Proc> getProcesses(long long ramTotal);
 
 // student TODO : network
 Networks getNetworkInterfaces();
+map<string, pair<TX, RX>> getNetworkStats();
 
 #endif
