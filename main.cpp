@@ -71,10 +71,12 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::SliderFloat("Graph FPS", &graphFPS, 1.0f, 60.0f, "%.1f FPS");
     ImGui::SliderFloat("Y Scale Limit", &yScale, 10.0f, 100.0f, "%.1f");
 
-    // History buffer for CPU
+        // History buffers for CPU and Thermal
     static std::vector<float> cpuHistory(100, 0.0f);
+    static std::vector<float> thermalHistory(100, 0.0f);
     static float timeAccumulator = 0.0f;
     static float currentCPUVal = 0.0f;
+    static float currentThermalVal = 0.0f;
 
     // Timer logic to sample values based on graphFPS
     float deltaTime = ImGui::GetIO().DeltaTime;
@@ -84,14 +86,17 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     if (timeAccumulator >= samplePeriod)
     {
         currentCPUVal = getCPUUsage();
+        currentThermalVal = getTemperature();
         if (!stopAnimation)
         {
             // Shift history
             for (size_t i = 0; i < (int)cpuHistory.size() - 1; ++i)
             {
                 cpuHistory[i] = cpuHistory[i + 1];
+                thermalHistory[i] = thermalHistory[i + 1];
             }
             cpuHistory.back() = currentCPUVal;
+            thermalHistory.back() = currentThermalVal;
         }
         timeAccumulator = 0.0f;
     }
@@ -114,7 +119,11 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
         }
         if (ImGui::BeginTabItem("Thermal"))
         {
-            ImGui::Text("Thermal stats placeholder");
+            char overlayText[32];
+            snprintf(overlayText, sizeof(overlayText), "Temp: %.1f C", currentThermalVal);
+            
+            // Plot Thermal lines
+            ImGui::PlotLines("Temperature", thermalHistory.data(), (int)thermalHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(-1, 150));
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();

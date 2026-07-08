@@ -244,3 +244,40 @@ float getCPUUsage()
     if (mockUsage > 95.0f) mockUsage = 95.0f;
     return mockUsage;
 }
+
+float getTemperature()
+{
+    // Try /proc/acpi/ibm/thermal first
+    ifstream ibmFile("/proc/acpi/ibm/thermal");
+    if (ibmFile.is_open())
+    {
+        string label;
+        ibmFile >> label;
+        if (label == "temperatures:")
+        {
+            float temp;
+            if (ibmFile >> temp)
+            {
+                return temp;
+            }
+        }
+    }
+
+    // Try /sys/class/thermal/thermal_zone0/temp
+    ifstream sysFile("/sys/class/thermal/thermal_zone0/temp");
+    if (sysFile.is_open())
+    {
+        float tempMs;
+        if (sysFile >> tempMs)
+        {
+            return tempMs / 1000.0f;
+        }
+    }
+
+    // Fallback/Mock for macOS testing (simple random oscillation between 45C and 55C)
+    static float mockTemp = 50.0f;
+    mockTemp += ((rand() % 100) - 50) / 100.0f;
+    if (mockTemp < 30.0f) mockTemp = 30.0f;
+    if (mockTemp > 90.0f) mockTemp = 90.0f;
+    return mockTemp;
+}

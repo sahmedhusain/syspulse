@@ -119,6 +119,7 @@ string getHostName();
 string getCPUModel();
 TaskCounts getTaskCounts();
 float getCPUUsage();
+float getTemperature();
 
 // student TODO : memory and processes
 
