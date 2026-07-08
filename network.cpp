@@ -1,5 +1,9 @@
 #include "header.h"
 
+#ifdef __APPLE__
+#include <net/if.h>
+#endif
+
 Networks getNetworkInterfaces()
 {
     Networks nets;
@@ -37,6 +41,47 @@ Networks getNetworkInterfaces()
 map<string, pair<TX, RX>> getNetworkStats()
 {
     map<string, pair<TX, RX>> statsMap;
+
+#ifdef __APPLE__
+    struct ifaddrs *ifaddr, *ifa;
+    if (getifaddrs(&ifaddr) != -1)
+    {
+        for (ifa = ifaddr; ifa != nullptr; ifa = ifa->ifa_next)
+        {
+            if (ifa->ifa_addr != nullptr && ifa->ifa_addr->sa_family == AF_LINK)
+            {
+                struct if_data *ifd = (struct if_data *)ifa->ifa_data;
+                if (ifd != nullptr)
+                {
+                    TX rxData;
+                    rxData.bytes = ifd->ifi_ibytes;
+                    rxData.packets = ifd->ifi_ipackets;
+                    rxData.errs = ifd->ifi_ierrors;
+                    rxData.drop = ifd->ifi_imcasts;
+                    rxData.fifo = 0;
+                    rxData.frame = 0;
+                    rxData.compressed = 0;
+                    rxData.multicast = ifd->ifi_imcasts;
+
+                    RX txData;
+                    txData.bytes = ifd->ifi_obytes;
+                    txData.packets = ifd->ifi_opackets;
+                    txData.errs = ifd->ifi_oerrors;
+                    txData.drop = 0;
+                    txData.fifo = 0;
+                    txData.colls = ifd->ifi_collisions;
+                    txData.carrier = 0;
+                    txData.compressed = 0;
+
+                    statsMap[ifa->ifa_name] = {rxData, txData};
+                }
+            }
+        }
+        freeifaddrs(ifaddr);
+        return statsMap;
+    }
+#endif
+
     ifstream file("/proc/net/dev");
     if (file.is_open())
     {
@@ -77,7 +122,7 @@ map<string, pair<TX, RX>> getNetworkStats()
         return statsMap;
     }
 
-    // Fallback/Mock for macOS testing
+    // Fallback/Mock for non-macOS/non-Linux testing
     TX mockRx = {452755738, 451234, 0, 2, 0, 0, 0, 4};
     RX mockTx = {23412344, 210456, 0, 0, 0, 0, 0, 0};
     statsMap["wlp5s0"] = {mockRx, mockTx};
