@@ -218,6 +218,12 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
     {
         if (ImGui::BeginTabItem("Processes"))
         {
+            // Display process states (Running, Sleeping, Zombie, Stopped)
+            TaskCounts tasks = getTaskCounts();
+            ImGui::Text("States - Running: %d | Sleeping: %d | Zombie: %d | Stopped: %d",
+                        tasks.running, tasks.sleeping, tasks.zombie, tasks.stopped);
+            ImGui::Spacing();
+
             // Text input filter
             static char filterText[128] = "";
             ImGui::InputText("Filter by Name", filterText, sizeof(filterText));
@@ -226,6 +232,13 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
             {
                 filterText[0] = '\0';
             }
+
+            // Name sorting controls
+            static int sortOrder = 0; // 0 = None, 1 = Name (Asc), 2 = Name (Desc)
+            const char* sortItems[] = { "None", "Name (Asc)", "Name (Desc)" };
+            ImGui::PushItemWidth(120.0f);
+            ImGui::Combo("Sort Order", &sortOrder, sortItems, IM_ARRAYSIZE(sortItems));
+            ImGui::PopItemWidth();
 
             ImGui::BeginChild("ProcTableChild", ImVec2(0, 0), true);
             if (ImGui::BeginTable("ProcessTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
@@ -239,6 +252,20 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
 
                 vector<Proc> processes = getProcesses(mem.ramTotal);
                 static std::set<int> selectedPids;
+
+                // Sort the processes if a sort order is selected
+                if (sortOrder == 1) // Ascending by Name
+                {
+                    std::sort(processes.begin(), processes.end(), [](const Proc &a, const Proc &b) {
+                        return a.name < b.name;
+                    });
+                }
+                else if (sortOrder == 2) // Descending by Name
+                {
+                    std::sort(processes.begin(), processes.end(), [](const Proc &a, const Proc &b) {
+                        return a.name > b.name;
+                    });
+                }
 
                 std::string filterStr = filterText;
                 std::transform(filterStr.begin(), filterStr.end(), filterStr.begin(),
