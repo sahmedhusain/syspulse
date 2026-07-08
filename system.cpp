@@ -1,5 +1,11 @@
 #include "header.h"
 
+#ifdef __APPLE__
+#include <sys/sysctl.h>
+#include <mach/mach.h>
+#include <libproc.h>
+#endif
+
 // get cpu id and information, you can use `proc/cpuinfo`
 string CPUinfo()
 {
@@ -89,6 +95,14 @@ string getHostName()
 
 string getCPUModel()
 {
+#ifdef __APPLE__
+    char model[256];
+    size_t size = sizeof(model);
+    if (sysctlbyname("machdep.cpu.brand_string", model, &size, NULL, 0) == 0)
+    {
+        return string(model);
+    }
+#endif
     ifstream file("/proc/cpuinfo");
     string line;
     if (file.is_open())
@@ -125,6 +139,17 @@ string getCPUModel()
 TaskCounts getTaskCounts()
 {
     TaskCounts counts;
+#ifdef __APPLE__
+    int num_procs = proc_listpids(PROC_ALL_PIDS, 0, NULL, 0);
+    if (num_procs > 0)
+    {
+        counts.total = num_procs / sizeof(pid_t);
+        counts.running = 2; // typical macOS estimate
+        counts.sleeping = counts.total - counts.running;
+    }
+    return counts;
+#endif
+
     DIR *dir = opendir("/proc");
     if (!dir)
     {
@@ -194,6 +219,39 @@ TaskCounts getTaskCounts()
 
 float getCPUUsage()
 {
+#ifdef __APPLE__
+    static long long prevUser = 0, prevSystem = 0, prevIdle = 0, prevNice = 0;
+
+    host_cpu_load_info_data_t cpu_load;
+    mach_msg_type_number_t count = HOST_CPU_LOAD_INFO_COUNT;
+    if (host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, (host_info_t)&cpu_load, &count) == KERN_SUCCESS)
+    {
+        long long user = cpu_load.cpu_ticks[CPU_STATE_USER];
+        long long system = cpu_load.cpu_ticks[CPU_STATE_SYSTEM];
+        long long idle = cpu_load.cpu_ticks[CPU_STATE_IDLE];
+        long long nice = cpu_load.cpu_ticks[CPU_STATE_NICE];
+
+        long long total = user + system + idle + nice;
+        long long prevTotal = prevUser + prevSystem + prevIdle + prevNice;
+
+        long long diffTotal = total - prevTotal;
+        long long diffIdle = idle - prevIdle;
+
+        float usage = 0.0f;
+        if (diffTotal > 0)
+        {
+            usage = (float)(diffTotal - diffIdle) / diffTotal;
+        }
+
+        prevUser = user;
+        prevSystem = system;
+        prevIdle = idle;
+        prevNice = nice;
+
+        return usage * 100.0f;
+    }
+    return 0.0f;
+#else
     static long long prevUser = 0, prevNice = 0, prevSystem = 0, prevIdle = 0;
     static long long prevIowait = 0, prevIrq = 0, prevSoftirq = 0, prevSteal = 0;
 
@@ -237,12 +295,13 @@ float getCPUUsage()
             return usage * 100.0f;
         }
     }
-    // Fallback/Mock for macOS testing (simple random oscillation between 20% and 40%)
+    // Fallback/Mock for non-macOS/non-Linux testing
     static float mockUsage = 30.0f;
     mockUsage += ((rand() % 100) - 50) / 50.0f;
     if (mockUsage < 5.0f) mockUsage = 5.0f;
     if (mockUsage > 95.0f) mockUsage = 95.0f;
     return mockUsage;
+#endif
 }
 
 float getTemperature()

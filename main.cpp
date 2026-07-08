@@ -80,8 +80,13 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     static float currentThermalVal = 0.0f;
     static FanStats currentFanStats;
 
-    // Timer logic to sample values based on graphFPS
-    float deltaTime = ImGui::GetIO().DeltaTime;
+    // Timer logic to sample values based on graphFPS using SDL_GetTicks()
+    static Uint32 lastTime = SDL_GetTicks();
+    Uint32 currentTime = SDL_GetTicks();
+    float deltaTime = (float)(currentTime - lastTime) / 1000.0f;
+    lastTime = currentTime;
+
+    if (deltaTime > 1.0f) deltaTime = 1.0f; // cap to avoid spikes
     timeAccumulator += deltaTime;
     float samplePeriod = 1.0f / graphFPS;
 
