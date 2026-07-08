@@ -4,6 +4,151 @@
 #include <sys/sysctl.h>
 #include <mach/mach.h>
 #include <libproc.h>
+#include <IOKit/IOKitLib.h>
+
+struct SMCVal {
+    char key[5];
+    uint32_t dataSize;
+    char dataType[5];
+    uint8_t bytes[32];
+};
+
+struct SMCKeyData_vers_t {
+    uint8_t major;
+    uint8_t minor;
+    uint8_t build;
+    uint8_t reserved[9];
+};
+
+struct SMCKeyData_pLimitData_t {
+    uint16_t version;
+    uint16_t length;
+    uint32_t cpuPLimit;
+    uint32_t gpuPLimit;
+    uint32_t memPLimit;
+};
+
+struct SMCKeyData_keyInfo_t {
+    uint32_t dataSize;
+    uint32_t dataType;
+    uint8_t  dataAttributes;
+};
+
+struct SMCKeyData_t {
+    uint32_t key;
+    SMCKeyData_vers_t vers;
+    SMCKeyData_pLimitData_t pLimitData;
+    SMCKeyData_keyInfo_t keyInfo;
+    uint8_t result;
+    uint8_t status;
+    uint8_t data8;
+    uint32_t data32;
+    uint8_t bytes[32];
+};
+
+#define KERNEL_INDEX_SMC 2
+#define CONN_TYPE_SMC 0
+
+static uint32_t getSMCKey(const char *keyStr)
+{
+    uint32_t key = 0;
+    for (int i = 0; i < 4; ++i)
+    {
+        key = (key << 8) | (unsigned char)keyStr[i];
+    }
+    return key;
+}
+
+static io_connect_t openSMC()
+{
+    CFMutableDictionaryRef matchingDict = IOServiceMatching("AppleSMC");
+    if (!matchingDict)
+        return 0;
+
+    io_iterator_t iterator;
+    if (IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &iterator) != kIOReturnSuccess)
+        return 0;
+
+    io_object_t device = IOIteratorNext(iterator);
+    IOObjectRelease(iterator);
+    if (device == 0)
+        return 0;
+
+    io_connect_t conn = 0;
+    kern_return_t kr = IOServiceOpen(device, mach_task_self(), CONN_TYPE_SMC, &conn);
+    IOObjectRelease(device);
+    if (kr != kIOReturnSuccess)
+        return 0;
+
+    return conn;
+}
+
+static void closeSMC(io_connect_t conn)
+{
+    IOServiceClose(conn);
+}
+
+static kern_return_t SMCCall(io_connect_t conn, int cmd, SMCKeyData_t *input, SMCKeyData_t *output)
+{
+    size_t inSize = sizeof(SMCKeyData_t);
+    size_t outSize = sizeof(SMCKeyData_t);
+    return IOConnectCallStructMethod(conn, KERNEL_INDEX_SMC, input, inSize, output, &outSize);
+}
+
+static bool SMCGetKeyInfo(io_connect_t conn, uint32_t key, SMCKeyData_keyInfo_t *info)
+{
+    SMCKeyData_t input;
+    memset(&input, 0, sizeof(input));
+    input.key = key;
+    input.data8 = 9; // Get Key Info
+
+    SMCKeyData_t output;
+    memset(&output, 0, sizeof(output));
+
+    if (SMCCall(conn, KERNEL_INDEX_SMC, &input, &output) == kIOReturnSuccess)
+    {
+        *info = output.keyInfo;
+        return output.result == 0;
+    }
+    return false;
+}
+
+static bool SMCReadValue(io_connect_t conn, const char *keyStr, SMCVal *val)
+{
+    uint32_t key = getSMCKey(keyStr);
+
+    SMCKeyData_keyInfo_t info;
+    if (!SMCGetKeyInfo(conn, key, &info))
+        return false;
+
+    SMCKeyData_t input;
+    memset(&input, 0, sizeof(input));
+    input.key = key;
+    input.keyInfo.dataSize = info.dataSize;
+    input.data8 = 5; // Read Key Value
+
+    SMCKeyData_t output;
+    memset(&output, 0, sizeof(output));
+
+    if (SMCCall(conn, KERNEL_INDEX_SMC, &input, &output) == kIOReturnSuccess)
+    {
+        if (output.result == 0)
+        {
+            strcpy(val->key, keyStr);
+            val->dataSize = info.dataSize;
+
+            uint32_t type = info.dataType;
+            val->dataType[0] = (type >> 24) & 0xff;
+            val->dataType[1] = (type >> 16) & 0xff;
+            val->dataType[2] = (type >> 8) & 0xff;
+            val->dataType[3] = type & 0xff;
+            val->dataType[4] = '\0';
+            memcpy(val->bytes, output.bytes, info.dataSize);
+            return true;
+        }
+    }
+    return false;
+}
 #endif
 
 // get cpu id and information, you can use `proc/cpuinfo`
@@ -424,18 +569,37 @@ FanStats getFanStats()
 
     // Fallback/Mock for macOS testing (handles fanless designs like MacBook Air)
 #ifdef __APPLE__
-    char model[128];
-    size_t size = sizeof(model);
-    if (sysctlbyname("hw.model", model, &size, NULL, 0) == 0)
+    io_connect_t conn = openSMC();
+    if (conn != 0)
     {
-        string modelStr(model);
-        if (modelStr.find("Air") != string::npos)
+        SMCVal val;
+        int fanCount = 0;
+        if (SMCReadValue(conn, "FNum", &val))
+        {
+            fanCount = val.bytes[0];
+        }
+
+        if (fanCount <= 0)
         {
             stats.status = "N/A (Fanless)";
             stats.level = "N/A";
             stats.speed = 0;
-            return stats;
         }
+        else
+        {
+            stats.status = "active";
+            stats.level = "auto";
+            if (SMCReadValue(conn, "F0Ac", &val))
+            {
+                stats.speed = (int)(((float)(((int)val.bytes[0] << 8) | val.bytes[1]) / 4.0f) + 0.5f);
+            }
+            else
+            {
+                stats.speed = 0;
+            }
+        }
+        closeSMC(conn);
+        return stats;
     }
 #endif
 
