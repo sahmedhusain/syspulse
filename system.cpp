@@ -66,7 +66,7 @@ static io_connect_t openSMC()
         return 0;
 
     io_iterator_t iterator;
-    if (IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &iterator) != kIOReturnSuccess)
+    if (IOServiceGetMatchingServices(0, matchingDict, &iterator) != kIOReturnSuccess)
         return 0;
 
     io_object_t device = IOIteratorNext(iterator);

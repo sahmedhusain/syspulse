@@ -83,26 +83,26 @@ struct Networks
 
 struct TX
 {
-    int bytes;
-    int packets;
-    int errs;
-    int drop;
-    int fifo;
-    int frame;
-    int compressed;
-    int multicast;
+    long long bytes;
+    long long packets;
+    long long errs;
+    long long drop;
+    long long fifo;
+    long long frame;
+    long long compressed;
+    long long multicast;
 };
 
 struct RX
 {
-    int bytes;
-    int packets;
-    int errs;
-    int drop;
-    int fifo;
-    int colls;
-    int carrier;
-    int compressed;
+    long long bytes;
+    long long packets;
+    long long errs;
+    long long drop;
+    long long fifo;
+    long long colls;
+    long long carrier;
+    long long compressed;
 };
 
 struct TaskCounts

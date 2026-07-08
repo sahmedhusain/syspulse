@@ -134,6 +134,40 @@ vector<Proc> getProcesses(long long ramTotal)
                 uptime = difftime(csec, bsec);
             }
 
+            static map<int, string> procStates;
+            static double lastPsUpdate = 0.0;
+            if (uptime - lastPsUpdate > 1.0)
+            {
+                lastPsUpdate = uptime;
+                FILE *fp = popen("ps -eo pid,stat", "r");
+                if (fp)
+                {
+                    procStates.clear();
+                    char line[256];
+                    if (fgets(line, sizeof(line), fp)) {} // skip header
+                    while (fgets(line, sizeof(line), fp))
+                    {
+                        int filePid;
+                        char statStr[16];
+                        if (sscanf(line, "%d %15s", &filePid, statStr) == 2)
+                        {
+                            string state = "unknown";
+                            switch (statStr[0])
+                            {
+                                case 'S': state = "sleeping"; break;
+                                case 'R': state = "running"; break;
+                                case 'I': state = "idle"; break;
+                                case 'T': state = "stopped"; break;
+                                case 'Z': state = "zombie"; break;
+                                case 'U': state = "uninterruptible"; break;
+                            }
+                            procStates[filePid] = state;
+                        }
+                    }
+                    pclose(fp);
+                }
+            }
+
             for (int i = 0; i < num_procs / sizeof(pid_t); ++i)
             {
                 pid_t pid = pids[i];
@@ -147,13 +181,20 @@ vector<Proc> getProcesses(long long ramTotal)
                     p.name = "(" + string(bsdinfo.pbi_name) + ")";
 
                     string state = "sleeping";
-                    switch (bsdinfo.pbi_status)
+                    if (procStates.find(pid) != procStates.end())
                     {
-                        case 1: state = "sleeping"; break; // Idle
-                        case 2: state = "running"; break;  // Run
-                        case 3: state = "sleeping"; break; // Sleep
-                        case 4: state = "stopped"; break;  // Stop
-                        case 5: state = "zombie"; break;   // Zombie
+                        state = procStates[pid];
+                    }
+                    else
+                    {
+                        switch (bsdinfo.pbi_status)
+                        {
+                            case 1: state = "idle"; break;
+                            case 2: state = "running"; break;
+                            case 3: state = "sleeping"; break;
+                            case 4: state = "stopped"; break;
+                            case 5: state = "zombie"; break;
+                        }
                     }
                     p.state = state;
 
@@ -197,7 +238,7 @@ vector<Proc> getProcesses(long long ramTotal)
                     procs.push_back(p);
                 }
             }
-            cpuHistoryMap = move(newCpuHistoryMap);
+            cpuHistoryMap = std::move(newCpuHistoryMap);
             return procs;
         }
 #endif
@@ -318,6 +359,6 @@ vector<Proc> getProcesses(long long ramTotal)
     }
     closedir(dir);
 
-    cpuHistoryMap = move(newCpuHistoryMap);
+    cpuHistoryMap = std::move(newCpuHistoryMap);
     return procs;
 }

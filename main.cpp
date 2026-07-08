@@ -488,7 +488,7 @@ int main(int, char **)
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window *window = SDL_CreateWindow("Dear ImGui SDL2+OpenGL3 example", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    SDL_Window *window = SDL_CreateWindow("System Monitor", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1); // Enable vsync
@@ -525,6 +525,33 @@ int main(int, char **)
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 8.0f;
+    style.FrameRounding = 6.0f;
+    style.GrabRounding = 6.0f;
+    style.PopupRounding = 6.0f;
+    style.ScrollbarRounding = 6.0f;
+    style.TabRounding = 6.0f;
+    style.WindowTitleAlign = ImVec2(0.5f, 0.5f);
+    
+    ImVec4* colors = style.Colors;
+    colors[ImGuiCol_WindowBg] = ImVec4(0.12f, 0.12f, 0.14f, 1.00f);
+    colors[ImGuiCol_TitleBg] = ImVec4(0.09f, 0.09f, 0.11f, 1.00f);
+    colors[ImGuiCol_TitleBgActive] = ImVec4(0.15f, 0.15f, 0.18f, 1.00f);
+    colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.22f, 0.27f, 1.00f);
+    colors[ImGuiCol_FrameBgHovered] = ImVec4(0.28f, 0.30f, 0.36f, 1.00f);
+    colors[ImGuiCol_FrameBgActive] = ImVec4(0.35f, 0.38f, 0.45f, 1.00f);
+    colors[ImGuiCol_Button] = ImVec4(0.24f, 0.26f, 0.33f, 1.00f);
+    colors[ImGuiCol_ButtonHovered] = ImVec4(0.32f, 0.35f, 0.44f, 1.00f);
+    colors[ImGuiCol_ButtonActive] = ImVec4(0.40f, 0.44f, 0.55f, 1.00f);
+    colors[ImGuiCol_Tab] = ImVec4(0.18f, 0.20f, 0.25f, 1.00f);
+    colors[ImGuiCol_TabHovered] = ImVec4(0.26f, 0.28f, 0.35f, 1.00f);
+    colors[ImGuiCol_TabActive] = ImVec4(0.30f, 0.33f, 0.41f, 1.00f);
+    colors[ImGuiCol_Header] = ImVec4(0.25f, 0.27f, 0.33f, 1.00f);
+    colors[ImGuiCol_HeaderHovered] = ImVec4(0.32f, 0.35f, 0.42f, 1.00f);
+    colors[ImGuiCol_HeaderActive] = ImVec4(0.38f, 0.42f, 0.50f, 1.00f);
+    colors[ImGuiCol_PlotLines] = ImVec4(0.39f, 0.69f, 1.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogram] = ImVec4(0.39f, 0.69f, 1.00f, 1.00f);
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
