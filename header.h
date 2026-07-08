@@ -111,6 +111,13 @@ struct TaskCounts
     int stopped = 0;
 };
 
+struct FanStats
+{
+    string status = "disabled";
+    int speed = 0;
+    string level = "0";
+};
+
 // student TODO : system stats
 string CPUinfo();
 const char *getOsName();
@@ -120,6 +127,7 @@ string getCPUModel();
 TaskCounts getTaskCounts();
 float getCPUUsage();
 float getTemperature();
+FanStats getFanStats();
 
 // student TODO : memory and processes
 

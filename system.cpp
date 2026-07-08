@@ -281,3 +281,95 @@ float getTemperature()
     if (mockTemp > 90.0f) mockTemp = 90.0f;
     return mockTemp;
 }
+
+FanStats getFanStats()
+{
+    FanStats stats;
+    ifstream file("/proc/acpi/ibm/fan");
+    if (file.is_open())
+    {
+        string line;
+        while (getline(file, line))
+        {
+            if (line.rfind("status:", 0) == 0)
+            {
+                size_t tab = line.find('\t');
+                if (tab != string::npos)
+                {
+                    stats.status = line.substr(tab + 1);
+                }
+                else
+                {
+                    size_t colon = line.find(':');
+                    if (colon != string::npos)
+                    {
+                        stats.status = line.substr(colon + 1);
+                    }
+                }
+                // Trim stats.status
+                size_t first = stats.status.find_first_not_of(" \t");
+                if (first != string::npos) stats.status = stats.status.substr(first);
+                size_t last = stats.status.find_last_not_of(" \t\r\n");
+                if (last != string::npos) stats.status = stats.status.substr(0, last + 1);
+            }
+            else if (line.rfind("speed:", 0) == 0)
+            {
+                size_t tab = line.find('\t');
+                if (tab != string::npos)
+                {
+                    stats.speed = atoi(line.substr(tab + 1).c_str());
+                }
+                else
+                {
+                    size_t colon = line.find(':');
+                    if (colon != string::npos)
+                    {
+                        stats.speed = atoi(line.substr(colon + 1).c_str());
+                    }
+                }
+            }
+            else if (line.rfind("level:", 0) == 0)
+            {
+                size_t tab = line.find('\t');
+                if (tab != string::npos)
+                {
+                    stats.level = line.substr(tab + 1);
+                }
+                else
+                {
+                    size_t colon = line.find(':');
+                    if (colon != string::npos)
+                    {
+                        stats.level = line.substr(colon + 1);
+                    }
+                }
+                // Trim stats.level
+                size_t first = stats.level.find_first_not_of(" \t");
+                if (first != string::npos) stats.level = stats.level.substr(first);
+                size_t last = stats.level.find_last_not_of(" \t\r\n");
+                if (last != string::npos) stats.level = stats.level.substr(0, last + 1);
+            }
+        }
+        return stats;
+    }
+
+    // Try reading fan speed from standard sysfs if /proc/acpi/ibm/fan is not present
+    ifstream sysFile("/sys/class/hwmon/hwmon0/device/fan_speed");
+    if (sysFile.is_open())
+    {
+        sysFile >> stats.speed;
+        stats.status = (stats.speed > 0) ? "active" : "inactive";
+        stats.level = "auto";
+        return stats;
+    }
+
+    // Fallback/Mock for macOS testing (simple random oscillation between 2000 and 4000 RPM)
+    stats.status = "active";
+    stats.level = "auto";
+    static int mockSpeed = 3000;
+    mockSpeed += (rand() % 200) - 100;
+    if (mockSpeed < 1000) mockSpeed = 1000;
+    if (mockSpeed > 5000) mockSpeed = 5000;
+    stats.speed = mockSpeed;
+    return stats;
+}

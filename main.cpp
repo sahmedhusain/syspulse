@@ -71,12 +71,14 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::SliderFloat("Graph FPS", &graphFPS, 1.0f, 60.0f, "%.1f FPS");
     ImGui::SliderFloat("Y Scale Limit", &yScale, 10.0f, 100.0f, "%.1f");
 
-        // History buffers for CPU and Thermal
+    // History buffers for CPU, Thermal, and Fan
     static std::vector<float> cpuHistory(100, 0.0f);
     static std::vector<float> thermalHistory(100, 0.0f);
+    static std::vector<float> fanHistory(100, 0.0f);
     static float timeAccumulator = 0.0f;
     static float currentCPUVal = 0.0f;
     static float currentThermalVal = 0.0f;
+    static FanStats currentFanStats;
 
     // Timer logic to sample values based on graphFPS
     float deltaTime = ImGui::GetIO().DeltaTime;
@@ -87,6 +89,7 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     {
         currentCPUVal = getCPUUsage();
         currentThermalVal = getTemperature();
+        currentFanStats = getFanStats();
         if (!stopAnimation)
         {
             // Shift history
@@ -94,9 +97,11 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
             {
                 cpuHistory[i] = cpuHistory[i + 1];
                 thermalHistory[i] = thermalHistory[i + 1];
+                fanHistory[i] = fanHistory[i + 1];
             }
             cpuHistory.back() = currentCPUVal;
             thermalHistory.back() = currentThermalVal;
+            fanHistory.back() = (float)currentFanStats.speed;
         }
         timeAccumulator = 0.0f;
     }
@@ -114,7 +119,13 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
         }
         if (ImGui::BeginTabItem("Fan"))
         {
-            ImGui::Text("Fan stats placeholder");
+            ImGui::Text("Status: %s", currentFanStats.status.c_str());
+            ImGui::Text("Level: %s", currentFanStats.level.c_str());
+            char overlayText[32];
+            snprintf(overlayText, sizeof(overlayText), "Speed: %d RPM", currentFanStats.speed);
+            
+            // Plot Fan lines
+            ImGui::PlotLines("Fan Speed", fanHistory.data(), (int)fanHistory.size(), 0, overlayText, 0.0f, yScale * 50.0f, ImVec2(-1, 150));
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Thermal"))
