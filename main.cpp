@@ -306,7 +306,13 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::SetWindowSize(id, size);
     ImGui::SetWindowPos(id, position);
 
-    // student TODO : add code here for the network information
+    ImGui::Text("Network Interfaces (IPv4):");
+    Networks nets = getNetworkInterfaces();
+    for (const auto &ip : nets.ip4s)
+    {
+        ImGui::BulletText("%s: %s", ip.name.c_str(), ip.addressBuffer);
+    }
+    ImGui::Spacing();
 
     ImGui::End();
 }

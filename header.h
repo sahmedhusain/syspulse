@@ -72,7 +72,7 @@ struct Proc
 
 struct IP4
 {
-    char *name;
+    string name;
     char addressBuffer[INET_ADDRSTRLEN];
 };
 
@@ -155,5 +155,6 @@ DiskStats getDiskStats();
 vector<Proc> getProcesses(long long ramTotal);
 
 // student TODO : network
+Networks getNetworkInterfaces();
 
 #endif
