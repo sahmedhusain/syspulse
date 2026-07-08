@@ -4,9 +4,40 @@
 #include <net/if.h>
 #endif
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <iphlpapi.h>
+#include <ws2tcpip.h>
+#endif
+
 Networks getNetworkInterfaces()
 {
     Networks nets;
+
+#ifdef _WIN32
+    ULONG flags = GAA_FLAG_INCLUDE_PREFIX;
+    ULONG outBufLen = 15000;
+    PIP_ADAPTER_ADDRESSES pAddresses = (IP_ADAPTER_ADDRESSES *)malloc(outBufLen);
+    if (GetAdaptersAddresses(AF_INET, flags, NULL, pAddresses, &outBufLen) == NO_ERROR) {
+        for (PIP_ADAPTER_ADDRESSES pCurrAddresses = pAddresses; pCurrAddresses; pCurrAddresses = pCurrAddresses->Next) {
+            for (PIP_ADAPTER_UNICAST_ADDRESS pUnicast = pCurrAddresses->FirstUnicastAddress; pUnicast; pUnicast = pUnicast->Next) {
+                if (pUnicast->Address.lpSockaddr->sa_family == AF_INET) {
+                    IP4 ip;
+                    char buffer[256];
+                    wcstombs(buffer, pCurrAddresses->FriendlyName, 256);
+                    ip.name = buffer;
+
+                    struct sockaddr_in *sa = (struct sockaddr_in *)pUnicast->Address.lpSockaddr;
+                    inet_ntop(AF_INET, &(sa->sin_addr), ip.addressBuffer, INET_ADDRSTRLEN);
+                    nets.ip4s.push_back(ip);
+                }
+            }
+        }
+    }
+    if (pAddresses) free(pAddresses);
+    return nets;
+#endif
+
     struct ifaddrs *ifaddr, *ifa;
 
     if (getifaddrs(&ifaddr) == -1)
@@ -41,6 +72,34 @@ Networks getNetworkInterfaces()
 map<string, pair<TX, RX>> getNetworkStats()
 {
     map<string, pair<TX, RX>> statsMap;
+
+#ifdef _WIN32
+    PMIB_IF_TABLE2 pIfTable;
+    if (GetIfTable2(&pIfTable) == NO_ERROR) {
+        for (ULONG i = 0; i < pIfTable->NumEntries; i++) {
+            char name[256];
+            wcstombs(name, pIfTable->Table[i].Alias, 256);
+
+            TX rxData;
+            rxData.bytes = pIfTable->Table[i].InOctets;
+            rxData.packets = pIfTable->Table[i].InUcastPkts + pIfTable->Table[i].InNUcastPkts;
+            rxData.errs = pIfTable->Table[i].InErrors;
+            rxData.drop = pIfTable->Table[i].InDiscards;
+            rxData.fifo = 0; rxData.frame = 0; rxData.compressed = 0; rxData.multicast = pIfTable->Table[i].InNUcastPkts;
+
+            RX txData;
+            txData.bytes = pIfTable->Table[i].OutOctets;
+            txData.packets = pIfTable->Table[i].OutUcastPkts + pIfTable->Table[i].OutNUcastPkts;
+            txData.errs = pIfTable->Table[i].OutErrors;
+            txData.drop = pIfTable->Table[i].OutDiscards;
+            txData.fifo = 0; txData.colls = 0; txData.carrier = 0; txData.compressed = 0;
+
+            statsMap[name] = {rxData, txData};
+        }
+        FreeMibTable(pIfTable);
+    }
+    return statsMap;
+#endif
 
 #ifdef __APPLE__
     struct ifaddrs *ifaddr, *ifa;

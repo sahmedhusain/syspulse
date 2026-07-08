@@ -1,5 +1,9 @@
 #include "header.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <mach/mach.h>
@@ -364,7 +368,45 @@ TaskCounts getTaskCounts()
 
 float getCPUUsage()
 {
-#ifdef __APPLE__
+#ifdef _WIN32
+    static FILETIME prevIdleTime = {0}, prevKernelTime = {0}, prevUserTime = {0};
+    FILETIME idleTime, kernelTime, userTime;
+    if (GetSystemTimes(&idleTime, &kernelTime, &userTime))
+    {
+        ULARGE_INTEGER prevIdle, prevKernel, prevUser;
+        prevIdle.LowPart = prevIdleTime.dwLowDateTime;
+        prevIdle.HighPart = prevIdleTime.dwHighDateTime;
+        prevKernel.LowPart = prevKernelTime.dwLowDateTime;
+        prevKernel.HighPart = prevKernelTime.dwHighDateTime;
+        prevUser.LowPart = prevUserTime.dwLowDateTime;
+        prevUser.HighPart = prevUserTime.dwHighDateTime;
+
+        ULARGE_INTEGER idle, kernel, user;
+        idle.LowPart = idleTime.dwLowDateTime;
+        idle.HighPart = idleTime.dwHighDateTime;
+        kernel.LowPart = kernelTime.dwLowDateTime;
+        kernel.HighPart = kernelTime.dwHighDateTime;
+        user.LowPart = userTime.dwLowDateTime;
+        user.HighPart = userTime.dwHighDateTime;
+
+        ULONGLONG diffIdle = idle.QuadPart - prevIdle.QuadPart;
+        ULONGLONG diffKernel = kernel.QuadPart - prevKernel.QuadPart;
+        ULONGLONG diffUser = user.QuadPart - prevUser.QuadPart;
+
+        ULONGLONG totalSystem = diffKernel + diffUser;
+        float usage = 0.0f;
+        if (totalSystem > 0)
+        {
+            usage = (float)(totalSystem - diffIdle) / totalSystem * 100.0f;
+        }
+
+        prevIdleTime = idleTime;
+        prevKernelTime = kernelTime;
+        prevUserTime = userTime;
+        return usage;
+    }
+    return 0.0f;
+#elif defined(__APPLE__)
     static long long prevUser = 0, prevSystem = 0, prevIdle = 0, prevNice = 0;
 
     host_cpu_load_info_data_t cpu_load;

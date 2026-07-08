@@ -7,9 +7,30 @@
 #include <libproc.h>
 #endif
 
+#ifdef _WIN32
+#include <windows.h>
+#include <psapi.h>
+#endif
+
 MemoryStats getMemoryStats()
 {
     MemoryStats stats;
+
+#ifdef _WIN32
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    if (GlobalMemoryStatusEx(&memInfo))
+    {
+        stats.total = memInfo.ullTotalPhys;
+        stats.free = memInfo.ullAvailPhys;
+        stats.used = stats.total - stats.free;
+        stats.swapTotal = memInfo.ullTotalPageFile;
+        stats.swapFree = memInfo.ullAvailPageFile;
+        stats.swapUsed = stats.swapTotal - stats.swapFree;
+        return stats;
+    }
+#endif
+
     ifstream file("/proc/meminfo");
     if (file.is_open())
     {
@@ -109,6 +130,104 @@ DiskStats getDiskStats()
 vector<Proc> getProcesses(long long ramTotal)
 {
     vector<Proc> procs;
+
+#ifdef _WIN32
+    DWORD aProcesses[1024], cbNeeded, cProcesses;
+    if (EnumProcesses(aProcesses, sizeof(aProcesses), &cbNeeded))
+    {
+        cProcesses = cbNeeded / sizeof(DWORD);
+        static map<DWORD, pair<ULONGLONG, ULONGLONG>> cpuHistoryMap;
+        map<DWORD, pair<ULONGLONG, ULONGLONG>> newCpuHistoryMap;
+
+        for (unsigned int i = 0; i < cProcesses; i++)
+        {
+            if (aProcesses[i] != 0)
+            {
+                DWORD pid = aProcesses[i];
+                HANDLE hProcess = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+                if (hProcess)
+                {
+                    Proc p;
+                    p.pid = pid;
+                    
+                    char szProcessName[MAX_PATH] = "<unknown>";
+                    HMODULE hMod;
+                    DWORD cbNeededMod;
+                    if (EnumProcessModules(hProcess, &hMod, sizeof(hMod), &cbNeededMod))
+                    {
+                        GetModuleBaseNameA(hProcess, hMod, szProcessName, sizeof(szProcessName)/sizeof(char));
+                    }
+                    p.name = string("(") + szProcessName + ")";
+
+                    PROCESS_MEMORY_COUNTERS pmc;
+                    if (GetProcessMemoryInfo(hProcess, &pmc, sizeof(pmc)))
+                    {
+                        p.rss = pmc.WorkingSetSize;
+                        p.vsize = pmc.PagefileUsage;
+                    }
+                    else
+                    {
+                        p.rss = 0;
+                        p.vsize = 0;
+                    }
+
+                    if (ramTotal > 0)
+                        p.memUsage = (p.rss / (float)ramTotal) * 100.0f;
+                    else
+                        p.memUsage = 0.0f;
+
+                    p.state = "running"; // Default since Windows doesn't map exactly to Linux states easily
+
+                    FILETIME ftime, fsys, fuser;
+                    ULARGE_INTEGER sys, user;
+                    if (GetProcessTimes(hProcess, &ftime, &ftime, &fsys, &fuser))
+                    {
+                        sys.LowPart = fsys.dwLowDateTime;
+                        sys.HighPart = fsys.dwHighDateTime;
+                        user.LowPart = fuser.dwLowDateTime;
+                        user.HighPart = fuser.dwHighDateTime;
+
+                        FILETIME idleTime, kernelTime, userTime;
+                        if (GetSystemTimes(&idleTime, &kernelTime, &userTime))
+                        {
+                            ULARGE_INTEGER sysKernel, sysUser;
+                            sysKernel.LowPart = kernelTime.dwLowDateTime;
+                            sysKernel.HighPart = kernelTime.dwHighDateTime;
+                            sysUser.LowPart = userTime.dwLowDateTime;
+                            sysUser.HighPart = userTime.dwHighDateTime;
+
+                            ULONGLONG totalProcess = sys.QuadPart + user.QuadPart;
+                            ULONGLONG totalSystem = sysKernel.QuadPart + sysUser.QuadPart;
+
+                            float cpuPercent = 0.0f;
+                            if (cpuHistoryMap.find(pid) != cpuHistoryMap.end())
+                            {
+                                ULONGLONG prevProcess = cpuHistoryMap[pid].first;
+                                ULONGLONG prevSystem = cpuHistoryMap[pid].second;
+                                
+                                ULONGLONG diffProcess = totalProcess - prevProcess;
+                                ULONGLONG diffSystem = totalSystem - prevSystem;
+                                
+                                if (diffSystem > 0)
+                                {
+                                    cpuPercent = (float)(diffProcess * 100.0) / diffSystem;
+                                }
+                            }
+                            p.cpuUsage = cpuPercent;
+                            newCpuHistoryMap[pid] = {totalProcess, totalSystem};
+                        }
+                    }
+
+                    procs.push_back(p);
+                    CloseHandle(hProcess);
+                }
+            }
+        }
+        cpuHistoryMap = std::move(newCpuHistoryMap);
+        return procs;
+    }
+#endif
+
     DIR *dir = opendir("/proc");
     if (!dir)
     {
