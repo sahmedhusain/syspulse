@@ -120,7 +120,7 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
             snprintf(overlayText, sizeof(overlayText), "Usage: %.1f%%", currentCPUVal);
             
             // Plot CPU lines
-            ImGui::PlotLines("CPU Usage", cpuHistory.data(), (int)cpuHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(-1, 120));
+            ImGui::PlotLines("CPU Usage", cpuHistory.data(), (int)cpuHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(ImGui::GetContentRegionAvail().x, 120));
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Fan"))
@@ -130,7 +130,7 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
             snprintf(overlayText, sizeof(overlayText), "Speed: %d RPM", currentFanStats.speed);
             
             // Plot Fan lines
-            ImGui::PlotLines("Fan Speed", fanHistory.data(), (int)fanHistory.size(), 0, overlayText, 0.0f, yScale * 50.0f, ImVec2(-1, 120));
+            ImGui::PlotLines("Fan Speed", fanHistory.data(), (int)fanHistory.size(), 0, overlayText, 0.0f, yScale * 50.0f, ImVec2(ImGui::GetContentRegionAvail().x, 120));
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Thermal"))
@@ -139,7 +139,7 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
             snprintf(overlayText, sizeof(overlayText), "Temp: %.1f C", currentThermalVal);
             
             // Plot Thermal lines
-            ImGui::PlotLines("Temperature", thermalHistory.data(), (int)thermalHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(-1, 120));
+            ImGui::PlotLines("Temperature", thermalHistory.data(), (int)thermalHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(ImGui::GetContentRegionAvail().x, 120));
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
