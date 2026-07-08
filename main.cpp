@@ -48,29 +48,19 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::SetWindowSize(id, size);
     ImGui::SetWindowPos(id, position);
 
-    ImGui::Text("OS: %s | Host: %s | User: %s", getOsName(), getHostName().c_str(), getLoggedInUser().c_str());
-    ImGui::Text("CPU Model: %s", getCPUModel().c_str());
-
-    ImGui::Separator();
-
+    ImGui::Text("Operating System used : %s", getOsName());
+    ImGui::Text("Computer name : %s", getHostName().c_str());
+    ImGui::Text("User logged in : %s", getLoggedInUser().c_str());
     TaskCounts tasks = getTaskCounts();
-    ImGui::Text("Tasks: %d total [ Running: %d | Sleeping: %d | Stopped: %d | Zombie: %d ]",
-                tasks.total, tasks.running, tasks.sleeping, tasks.stopped, tasks.zombie);
+    ImGui::Text("Number of working processes : %d", tasks.total);
+    ImGui::Text("CPU : %s", getCPUModel().c_str());
 
     ImGui::Separator();
 
-    // Shared graph controls in a single row
-    static bool stopAnimation = false;
+    // Shared graph controls and state variables
+    static bool animate = true;
     static float graphFPS = 5.0f; // Default 5 updates per second
-    static float yScale = 100.0f; // Default scale is 0 to 100
-
-    ImGui::Checkbox("Pause", &stopAnimation);
-    ImGui::SameLine();
-    ImGui::PushItemWidth(80.0f);
-    ImGui::SliderFloat("FPS", &graphFPS, 1.0f, 60.0f, "%.0f");
-    ImGui::SameLine();
-    ImGui::SliderFloat("Y Max", &yScale, 10.0f, 100.0f, "%.0f");
-    ImGui::PopItemWidth();
+    static float scaleMax = 100.0f; // Default scale max is 100
 
     // History buffers for CPU, Thermal, and Fan
     static std::vector<float> cpuHistory(100, 0.0f);
@@ -96,7 +86,7 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
         currentCPUVal = getCPUUsage();
         currentThermalVal = getTemperature();
         currentFanStats = getFanStats();
-        if (!stopAnimation)
+        if (animate)
         {
             // Shift history
             for (size_t i = 0; i < (int)cpuHistory.size() - 1; ++i)
@@ -116,30 +106,48 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     {
         if (ImGui::BeginTabItem("CPU"))
         {
+            ImGui::Checkbox("Animate", &animate);
+            ImGui::SliderFloat("FPS", &graphFPS, 1.0f, 60.0f, "%.0f");
+            ImGui::SliderFloat("scale max", &scaleMax, 10.0f, 100.0f, "%.0f");
+            ImGui::Text("percentage : %.2f %%", currentCPUVal);
+            
             char overlayText[32];
             snprintf(overlayText, sizeof(overlayText), "Usage: %.1f%%", currentCPUVal);
             
             // Plot CPU lines
-            ImGui::PlotLines("CPU Usage", cpuHistory.data(), (int)cpuHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(ImGui::GetContentRegionAvail().x, 120));
+            ImGui::PlotLines("CPU", cpuHistory.data(), (int)cpuHistory.size(), 0, overlayText, 0.0f, scaleMax, ImVec2(ImGui::GetContentRegionAvail().x, 150));
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Fan"))
         {
-            ImGui::Text("Status: %s | Level: %s", currentFanStats.status.c_str(), currentFanStats.level.c_str());
+            ImGui::Checkbox("Animate", &animate);
+            ImGui::SliderFloat("FPS", &graphFPS, 1.0f, 60.0f, "%.0f");
+            ImGui::SliderFloat("scale max", &scaleMax, 10.0f, 100.0f, "%.0f");
+            
+            ImGui::Text("status : %s", currentFanStats.status.c_str());
+            ImGui::Text("level : %s", currentFanStats.level.c_str());
+            ImGui::Text("speed : %d RPM", currentFanStats.speed);
+            
             char overlayText[32];
             snprintf(overlayText, sizeof(overlayText), "Speed: %d RPM", currentFanStats.speed);
             
             // Plot Fan lines
-            ImGui::PlotLines("Fan Speed", fanHistory.data(), (int)fanHistory.size(), 0, overlayText, 0.0f, yScale * 50.0f, ImVec2(ImGui::GetContentRegionAvail().x, 120));
+            ImGui::PlotLines("speed", fanHistory.data(), (int)fanHistory.size(), 0, overlayText, 0.0f, scaleMax * 50.0f, ImVec2(ImGui::GetContentRegionAvail().x, 150));
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Thermal"))
         {
+            ImGui::Checkbox("Animate", &animate);
+            ImGui::SliderFloat("FPS", &graphFPS, 1.0f, 60.0f, "%.0f");
+            ImGui::SliderFloat("scale max", &scaleMax, 10.0f, 100.0f, "%.0f");
+            
+            ImGui::Text("temperature : %.2f C", currentThermalVal);
+            
             char overlayText[32];
             snprintf(overlayText, sizeof(overlayText), "Temp: %.1f C", currentThermalVal);
             
             // Plot Thermal lines
-            ImGui::PlotLines("Temperature", thermalHistory.data(), (int)thermalHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(ImGui::GetContentRegionAvail().x, 120));
+            ImGui::PlotLines("temperature", thermalHistory.data(), (int)thermalHistory.size(), 0, overlayText, 0.0f, scaleMax, ImVec2(ImGui::GetContentRegionAvail().x, 150));
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
@@ -218,15 +226,12 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
     {
         if (ImGui::BeginTabItem("Processes"))
         {
-            // Display process states (Running, Sleeping, Zombie, Stopped)
-            TaskCounts tasks = getTaskCounts();
-            ImGui::Text("States - Running: %d | Sleeping: %d | Zombie: %d | Stopped: %d",
-                        tasks.running, tasks.sleeping, tasks.zombie, tasks.stopped);
-            ImGui::Spacing();
+            ImGui::Text("* Process Table");
+            ImGui::Text("filter the process by name:");
 
             // Text input filter
             static char filterText[128] = "";
-            ImGui::InputText("Filter by Name", filterText, sizeof(filterText));
+            ImGui::InputText("Filter (inc,-dec)", filterText, sizeof(filterText));
             ImGui::SameLine();
             if (ImGui::Button("Clear"))
             {
@@ -244,10 +249,10 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
             if (ImGui::BeginTable("ProcessTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
             {
                 ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 60.0f);
-                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
-                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 50.0f);
-                ImGui::TableSetupColumn("CPU %", ImGuiTableColumnFlags_WidthFixed, 60.0f);
-                ImGui::TableSetupColumn("Memory %", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+                ImGui::TableSetupColumn("NAME", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("STATE", ImGuiTableColumnFlags_WidthFixed, 80.0f);
+                ImGui::TableSetupColumn("CPU", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                ImGui::TableSetupColumn("MEM", ImGuiTableColumnFlags_WidthFixed, 60.0f);
                 ImGui::TableHeadersRow();
 
                 vector<Proc> processes = getProcesses(mem.ramTotal);
@@ -310,15 +315,15 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
                     
                     // State
                     ImGui::TableSetColumnIndex(2);
-                    ImGui::Text("%c", p.state);
+                    ImGui::Text("%s", p.state.c_str());
                     
-                    // CPU %
+                    // CPU
                     ImGui::TableSetColumnIndex(3);
-                    ImGui::Text("%.1f%%", p.cpuUsage);
+                    ImGui::Text("%.2f", p.cpuUsage);
                     
-                    // Memory %
+                    // Memory
                     ImGui::TableSetColumnIndex(4);
-                    ImGui::Text("%.1f%%", p.memUsage);
+                    ImGui::Text("%.2f", p.memUsage);
                 }
                 ImGui::EndTable();
             }
@@ -338,20 +343,22 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::SetWindowSize(id, size);
     ImGui::SetWindowPos(id, position);
 
-    ImGui::Text("Network Interfaces (IPv4):");
+    ImGui::Text("ip4 network:");
     Networks nets = getNetworkInterfaces();
     for (const auto &ip : nets.ip4s)
     {
-        ImGui::BulletText("%s: %s", ip.name.c_str(), ip.addressBuffer);
+        ImGui::BulletText("%s : %s", ip.name.c_str(), ip.addressBuffer);
     }
     ImGui::Spacing();
+
+    ImGui::Text("* network table");
+
+    map<string, pair<TX, RX>> netStats = getNetworkStats();
 
     // Tab Bar for RX / TX Tables
     if (ImGui::BeginTabBar("NetProcTabs"))
     {
-        map<string, pair<TX, RX>> netStats = getNetworkStats();
-
-        if (ImGui::BeginTabItem("RX"))
+        if (ImGui::BeginTabItem("Receive(RX)"))
         {
             if (ImGui::BeginTable("RXTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
             {
@@ -373,21 +380,21 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
                     ImGui::Text("%s", pair.first.c_str());
 
                     const TX &rx = pair.second.first; // Mapped to TX struct
-                    ImGui::TableSetColumnIndex(1); ImGui::Text("%d", rx.bytes);
-                    ImGui::TableSetColumnIndex(2); ImGui::Text("%d", rx.packets);
-                    ImGui::TableSetColumnIndex(3); ImGui::Text("%d", rx.errs);
-                    ImGui::TableSetColumnIndex(4); ImGui::Text("%d", rx.drop);
-                    ImGui::TableSetColumnIndex(5); ImGui::Text("%d", rx.fifo);
-                    ImGui::TableSetColumnIndex(6); ImGui::Text("%d", rx.frame);
-                    ImGui::TableSetColumnIndex(7); ImGui::Text("%d", rx.compressed);
-                    ImGui::TableSetColumnIndex(8); ImGui::Text("%d", rx.multicast);
+                    ImGui::TableSetColumnIndex(1); ImGui::Text("%lld", rx.bytes);
+                    ImGui::TableSetColumnIndex(2); ImGui::Text("%lld", rx.packets);
+                    ImGui::TableSetColumnIndex(3); ImGui::Text("%lld", rx.errs);
+                    ImGui::TableSetColumnIndex(4); ImGui::Text("%lld", rx.drop);
+                    ImGui::TableSetColumnIndex(5); ImGui::Text("%lld", rx.fifo);
+                    ImGui::TableSetColumnIndex(6); ImGui::Text("%lld", rx.frame);
+                    ImGui::TableSetColumnIndex(7); ImGui::Text("%lld", rx.compressed);
+                    ImGui::TableSetColumnIndex(8); ImGui::Text("%lld", rx.multicast);
                 }
                 ImGui::EndTable();
             }
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("TX"))
+        if (ImGui::BeginTabItem("Receive(TX)"))
         {
             if (ImGui::BeginTable("TXTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
             {
@@ -409,55 +416,39 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
                     ImGui::Text("%s", pair.first.c_str());
 
                     const RX &tx = pair.second.second; // Mapped to RX struct
-                    ImGui::TableSetColumnIndex(1); ImGui::Text("%d", tx.bytes);
-                    ImGui::TableSetColumnIndex(2); ImGui::Text("%d", tx.packets);
-                    ImGui::TableSetColumnIndex(3); ImGui::Text("%d", tx.errs);
-                    ImGui::TableSetColumnIndex(4); ImGui::Text("%d", tx.drop);
-                    ImGui::TableSetColumnIndex(5); ImGui::Text("%d", tx.fifo);
-                    ImGui::TableSetColumnIndex(6); ImGui::Text("%d", tx.colls);
-                    ImGui::TableSetColumnIndex(7); ImGui::Text("%d", tx.carrier);
-                    ImGui::TableSetColumnIndex(8); ImGui::Text("%d", tx.compressed);
+                    ImGui::TableSetColumnIndex(1); ImGui::Text("%lld", tx.bytes);
+                    ImGui::TableSetColumnIndex(2); ImGui::Text("%lld", tx.packets);
+                    ImGui::TableSetColumnIndex(3); ImGui::Text("%lld", tx.errs);
+                    ImGui::TableSetColumnIndex(4); ImGui::Text("%lld", tx.drop);
+                    ImGui::TableSetColumnIndex(5); ImGui::Text("%lld", tx.fifo);
+                    ImGui::TableSetColumnIndex(6); ImGui::Text("%lld", tx.colls);
+                    ImGui::TableSetColumnIndex(7); ImGui::Text("%lld", tx.carrier);
+                    ImGui::TableSetColumnIndex(8); ImGui::Text("%lld", tx.compressed);
                 }
                 ImGui::EndTable();
             }
             ImGui::EndTabItem();
         }
-
-        if (ImGui::BeginTabItem("RX Usage"))
-        {
-            double maxBytes = 2.0 * 1024.0 * 1024.0 * 1024.0; // 2 GB
-            for (const auto &pair : netStats)
-            {
-                const TX &rx = pair.second.first; // Mapped to TX struct
-                float fraction = (float)((double)rx.bytes / maxBytes);
-                if (fraction > 1.0f) fraction = 1.0f;
-                if (fraction < 0.0f) fraction = 0.0f;
-
-                ImGui::Text("%s RX:", pair.first.c_str());
-                std::string formatted = formatBytes(rx.bytes);
-                ImGui::ProgressBar(fraction, ImVec2(-1, 0), formatted.c_str());
-            }
-            ImGui::EndTabItem();
-        }
-
-        if (ImGui::BeginTabItem("TX Usage"))
-        {
-            double maxBytes = 2.0 * 1024.0 * 1024.0 * 1024.0; // 2 GB
-            for (const auto &pair : netStats)
-            {
-                const RX &tx = pair.second.second; // Mapped to RX struct
-                float fraction = (float)((double)tx.bytes / maxBytes);
-                if (fraction > 1.0f) fraction = 1.0f;
-                if (fraction < 0.0f) fraction = 0.0f;
-
-                ImGui::Text("%s TX:", pair.first.c_str());
-                std::string formatted = formatBytes(tx.bytes);
-                ImGui::ProgressBar(fraction, ImVec2(-1, 0), formatted.c_str());
-            }
-            ImGui::EndTabItem();
-        }
-
         ImGui::EndTabBar();
+    }
+
+    ImGui::Spacing();
+
+    // Progress bars drawn directly below the tab bar, outside tabs
+    double maxBytes = 2.0 * 1024.0 * 1024.0 * 1024.0; // 2 GB
+    for (const auto &pair : netStats)
+    {
+        const TX &rx = pair.second.first; // RX data
+        float fraction = (float)((double)rx.bytes / maxBytes);
+        if (fraction > 1.0f) fraction = 1.0f;
+        if (fraction < 0.0f) fraction = 0.0f;
+
+        ImGui::Text("%s", pair.first.c_str());
+        std::string formatted = formatBytes(rx.bytes);
+        
+        ImGui::ProgressBar(fraction, ImVec2(ImGui::GetContentRegionAvail().x - 65.0f, 0), formatted.c_str());
+        ImGui::SameLine();
+        ImGui::Text("2.00 GB");
     }
 
     ImGui::End();

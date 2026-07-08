@@ -144,16 +144,16 @@ vector<Proc> getProcesses(long long ramTotal)
                 {
                     Proc p;
                     p.pid = pid;
-                    p.name = bsdinfo.pbi_name;
+                    p.name = "(" + string(bsdinfo.pbi_name) + ")";
 
-                    char state = 'S';
+                    string state = "sleeping";
                     switch (bsdinfo.pbi_status)
                     {
-                        case 1: state = 'I'; break; // Idle
-                        case 2: state = 'R'; break; // Run
-                        case 3: state = 'S'; break; // Sleep
-                        case 4: state = 'T'; break; // Stop
-                        case 5: state = 'Z'; break; // Zombie
+                        case 1: state = "sleeping"; break; // Idle
+                        case 2: state = "running"; break;  // Run
+                        case 3: state = "sleeping"; break; // Sleep
+                        case 4: state = "stopped"; break;  // Stop
+                        case 5: state = "zombie"; break;   // Zombie
                     }
                     p.state = state;
 
@@ -205,10 +205,10 @@ vector<Proc> getProcesses(long long ramTotal)
         static vector<Proc> mockProcs;
         if (mockProcs.empty())
         {
-            Proc p1 = {101, "monitor", 'R', 1048576, 256 * 1024 * 1024, 0, 0, 1.5f, 2.3f};
-            Proc p2 = {102, "bash", 'S', 524288, 128 * 1024 * 1024, 0, 0, 0.1f, 1.2f};
-            Proc p3 = {103, "init", 'S', 262144, 64 * 1024 * 1024, 0, 0, 0.0f, 0.5f};
-            Proc p4 = {104, "zombie_proc", 'Z', 0, 0, 0, 0, 0.0f, 0.0f};
+            Proc p1 = {101, "(monitor)", "running", 1048576, 256 * 1024 * 1024, 0, 0, 1.5f, 2.3f};
+            Proc p2 = {102, "(bash)", "sleeping", 524288, 128 * 1024 * 1024, 0, 0, 0.1f, 1.2f};
+            Proc p3 = {103, "(init)", "sleeping", 262144, 64 * 1024 * 1024, 0, 0, 0.0f, 0.5f};
+            Proc p4 = {104, "(zombie_proc)", "zombie", 0, 0, 0, 0, 0.0f, 0.0f};
             mockProcs = {p1, p2, p3, p4};
         }
         return mockProcs;
@@ -251,11 +251,13 @@ vector<Proc> getProcesses(long long ramTotal)
                     char state;
                     statFile >> filePid >> comm >> state;
 
-                    // Strip parentheses
-                    if (!comm.empty() && comm.front() == '(') comm.erase(0, 1);
-                    if (!comm.empty() && comm.back() == ')') comm.pop_back();
                     p.name = comm;
-                    p.state = state;
+                    
+                    string stateStr = "sleeping";
+                    if (state == 'R') stateStr = "running";
+                    else if (state == 'Z') stateStr = "zombie";
+                    else if (state == 'T' || state == 't') stateStr = "stopped";
+                    p.state = stateStr;
 
                     long long utime = 0, stime = 0;
                     long long starttime = 0;
