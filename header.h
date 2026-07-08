@@ -18,11 +18,16 @@
 // this is for us to get the cpu information
 // mostly in unix system
 // not sure if it will work in windows
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
 #include <cpuid.h>
+#define CAN_USE_CPUID 1
+#endif
 // this is for the memory usage and other memory visualization
 // for linux gotta find a way for windows
 #include <sys/types.h>
+#ifdef __linux__
 #include <sys/sysinfo.h>
+#endif
 #include <sys/statvfs.h>
 // for time and date
 #include <ctime>

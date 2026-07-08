@@ -3,6 +3,7 @@
 // get cpu id and information, you can use `proc/cpuinfo`
 string CPUinfo()
 {
+#ifdef CAN_USE_CPUID
     char CPUBrandString[0x40];
     unsigned int CPUInfo[4] = {0, 0, 0, 0};
 
@@ -28,6 +29,9 @@ string CPUinfo()
     }
     string str(CPUBrandString);
     return str;
+#else
+    return "Apple Silicon (ARM64)";
+#endif
 }
 
 // getOsName, this will get the OS of the current computer
