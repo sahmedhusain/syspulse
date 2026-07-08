@@ -61,7 +61,7 @@ struct Proc
 {
     int pid;
     string name;
-    char state;
+    string state;
     long long int vsize;
     long long int rss;
     long long int utime;
