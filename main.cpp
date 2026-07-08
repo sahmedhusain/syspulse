@@ -390,6 +390,41 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
             }
             ImGui::EndTabItem();
         }
+
+        if (ImGui::BeginTabItem("RX Usage"))
+        {
+            double maxBytes = 2.0 * 1024.0 * 1024.0 * 1024.0; // 2 GB
+            for (const auto &pair : netStats)
+            {
+                const TX &rx = pair.second.first; // Mapped to TX struct
+                float fraction = (float)((double)rx.bytes / maxBytes);
+                if (fraction > 1.0f) fraction = 1.0f;
+                if (fraction < 0.0f) fraction = 0.0f;
+
+                ImGui::Text("%s RX:", pair.first.c_str());
+                std::string formatted = formatBytes(rx.bytes);
+                ImGui::ProgressBar(fraction, ImVec2(-1, 0), formatted.c_str());
+            }
+            ImGui::EndTabItem();
+        }
+
+        if (ImGui::BeginTabItem("TX Usage"))
+        {
+            double maxBytes = 2.0 * 1024.0 * 1024.0 * 1024.0; // 2 GB
+            for (const auto &pair : netStats)
+            {
+                const RX &tx = pair.second.second; // Mapped to RX struct
+                float fraction = (float)((double)tx.bytes / maxBytes);
+                if (fraction > 1.0f) fraction = 1.0f;
+                if (fraction < 0.0f) fraction = 0.0f;
+
+                ImGui::Text("%s TX:", pair.first.c_str());
+                std::string formatted = formatBytes(tx.bytes);
+                ImGui::ProgressBar(fraction, ImVec2(-1, 0), formatted.c_str());
+            }
+            ImGui::EndTabItem();
+        }
+
         ImGui::EndTabBar();
     }
 

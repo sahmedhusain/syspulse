@@ -88,3 +88,29 @@ map<string, pair<TX, RX>> getNetworkStats()
 
     return statsMap;
 }
+
+string formatBytes(long long bytes)
+{
+    char buffer[64];
+    double kb = 1024.0;
+    double mb = 1024.0 * 1024.0;
+    double gb = 1024.0 * 1024.0 * 1024.0;
+
+    if (bytes >= gb)
+    {
+        snprintf(buffer, sizeof(buffer), "%.2f GB", bytes / gb);
+    }
+    else if (bytes >= mb)
+    {
+        snprintf(buffer, sizeof(buffer), "%.2f MB", bytes / mb);
+    }
+    else if (bytes >= kb)
+    {
+        snprintf(buffer, sizeof(buffer), "%.2f KB", bytes / kb);
+    }
+    else
+    {
+        snprintf(buffer, sizeof(buffer), "%lld B", bytes);
+    }
+    return string(buffer);
+}
