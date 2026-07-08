@@ -30,7 +30,7 @@ string CPUinfo()
     string str(CPUBrandString);
     return str;
 #else
-    return "Apple Silicon (ARM64)";
+    return "ARM64 CPU";
 #endif
 }
 
@@ -52,4 +52,142 @@ const char *getOsName()
 #else
     return "Other";
 #endif
+}
+
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 256
+#endif
+
+#ifndef LOGIN_NAME_MAX
+#define LOGIN_NAME_MAX 256
+#endif
+
+string getLoggedInUser()
+{
+    char username[LOGIN_NAME_MAX];
+    if (getlogin_r(username, sizeof(username)) == 0)
+    {
+        return string(username);
+    }
+    const char *env_user = getenv("USER");
+    if (env_user)
+    {
+        return string(env_user);
+    }
+    return "Unknown";
+}
+
+string getHostName()
+{
+    char hostname[HOST_NAME_MAX];
+    if (gethostname(hostname, sizeof(hostname)) == 0)
+    {
+        return string(hostname);
+    }
+    return "Unknown";
+}
+
+string getCPUModel()
+{
+    ifstream file("/proc/cpuinfo");
+    string line;
+    if (file.is_open())
+    {
+        while (getline(file, line))
+        {
+            if (line.rfind("model name", 0) == 0 || line.rfind("Model", 0) == 0)
+            {
+                size_t colon = line.find(':');
+                if (colon != string::npos)
+                {
+                    string model = line.substr(colon + 1);
+                    // Trim leading spaces
+                    size_t first = model.find_first_not_of(" \t");
+                    if (first != string::npos)
+                    {
+                        model = model.substr(first);
+                    }
+                    // Trim trailing spaces/newlines
+                    size_t last = model.find_last_not_of(" \t\r\n");
+                    if (last != string::npos)
+                    {
+                        model = model.substr(0, last + 1);
+                    }
+                    return model;
+                }
+            }
+        }
+    }
+    // Fallback if /proc/cpuinfo is not readable/present (e.g. on macOS)
+    return CPUinfo();
+}
+
+TaskCounts getTaskCounts()
+{
+    TaskCounts counts;
+    DIR *dir = opendir("/proc");
+    if (!dir)
+    {
+        return counts;
+    }
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+        if (entry->d_type == DT_DIR)
+        {
+            char *endptr;
+            long pid = strtol(entry->d_name, &endptr, 10);
+            if (*endptr == '\0' && pid > 0)
+            {
+                counts.total++;
+                // Read state
+                string statPath = string("/proc/") + entry->d_name + "/stat";
+                ifstream statFile(statPath);
+                if (statFile.is_open())
+                {
+                    int filePid;
+                    string temp;
+                    char state = '\0';
+
+                    statFile >> filePid;
+                    // Read process name in parentheses (e.g., "(bash)")
+                    statFile >> temp;
+                    if (!temp.empty() && temp.front() == '(')
+                    {
+                        while (!temp.empty() && temp.back() != ')' && statFile >> temp)
+                        {
+                            // Loop to skip name with spaces
+                        }
+                    }
+                    statFile >> state;
+
+                    switch (state)
+                    {
+                    case 'R':
+                        counts.running++;
+                        break;
+                    case 'S':
+                    case 'I': // Idle kernel threads
+                        counts.sleeping++;
+                        break;
+                    case 'D':
+                        counts.uninterruptible++;
+                        break;
+                    case 'Z':
+                        counts.zombie++;
+                        break;
+                    case 'T':
+                    case 't':
+                        counts.stopped++;
+                        break;
+                    default:
+                        counts.sleeping++;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    closedir(dir);
+    return counts;
 }

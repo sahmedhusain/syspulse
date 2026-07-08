@@ -101,9 +101,23 @@ struct RX
     int compressed;
 };
 
+struct TaskCounts
+{
+    int total = 0;
+    int running = 0;
+    int sleeping = 0;
+    int uninterruptible = 0;
+    int zombie = 0;
+    int stopped = 0;
+};
+
 // student TODO : system stats
 string CPUinfo();
 const char *getOsName();
+string getLoggedInUser();
+string getHostName();
+string getCPUModel();
+TaskCounts getTaskCounts();
 
 // student TODO : memory and processes
 

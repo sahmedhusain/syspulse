@@ -48,7 +48,20 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::SetWindowSize(id, size);
     ImGui::SetWindowPos(id, position);
 
-    // student TODO : add code here for the system window
+    ImGui::Text("Operating System: %s", getOsName());
+    ImGui::Text("Hostname: %s", getHostName().c_str());
+    ImGui::Text("User Logged In: %s", getLoggedInUser().c_str());
+    ImGui::Text("CPU Type: %s", getCPUModel().c_str());
+    
+    ImGui::Separator();
+    
+    TaskCounts tasks = getTaskCounts();
+    ImGui::Text("Tasks: %d total", tasks.total);
+    ImGui::BulletText("Running: %d", tasks.running);
+    ImGui::BulletText("Sleeping: %d", tasks.sleeping);
+    ImGui::BulletText("Uninterruptible: %d", tasks.uninterruptible);
+    ImGui::BulletText("Zombie: %d", tasks.zombie);
+    ImGui::BulletText("Stopped: %d", tasks.stopped);
 
     ImGui::End();
 }
