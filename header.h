@@ -130,6 +130,15 @@ float getTemperature();
 FanStats getFanStats();
 
 // student TODO : memory and processes
+struct MemoryStats
+{
+    long long ramTotal = 0;  // in bytes
+    long long ramUsed = 0;   // in bytes
+    long long swapTotal = 0; // in bytes
+    long long swapUsed = 0;  // in bytes
+};
+
+MemoryStats getMemoryStats();
 
 // student TODO : network
 

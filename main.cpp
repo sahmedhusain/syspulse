@@ -150,7 +150,46 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::SetWindowSize(id, size);
     ImGui::SetWindowPos(id, position);
 
-    // student TODO : add code here for the memory and process information
+    MemoryStats mem = getMemoryStats();
+    
+    // RAM Progress Bar
+    float ramPercent = 0.0f;
+    if (mem.ramTotal > 0)
+    {
+        ramPercent = (float)mem.ramUsed / mem.ramTotal;
+    }
+    float ramUsedGB = (float)mem.ramUsed / (1024.0f * 1024.0f * 1024.0f);
+    float ramTotalGB = (float)mem.ramTotal / (1024.0f * 1024.0f * 1024.0f);
+    
+    ImGui::Text("Physic Memory (RAM):");
+    char ramOverlay[64];
+    snprintf(ramOverlay, sizeof(ramOverlay), "%.2f / %.2f GB (%.1f%%)", ramUsedGB, ramTotalGB, ramPercent * 100.0f);
+    ImGui::ProgressBar(ramPercent, ImVec2(-1, 0), ramOverlay);
+
+    ImGui::Spacing();
+
+    // SWAP Progress Bar
+    float swapPercent = 0.0f;
+    if (mem.swapTotal > 0)
+    {
+        swapPercent = (float)mem.swapUsed / mem.swapTotal;
+    }
+    float swapUsedGB = (float)mem.swapUsed / (1024.0f * 1024.0f * 1024.0f);
+    float swapTotalGB = (float)mem.swapTotal / (1024.0f * 1024.0f * 1024.0f);
+
+    ImGui::Text("Virtual Memory (SWAP):");
+    char swapOverlay[64];
+    if (mem.swapTotal > 0)
+    {
+        snprintf(swapOverlay, sizeof(swapOverlay), "%.2f / %.2f GB (%.1f%%)", swapUsedGB, swapTotalGB, swapPercent * 100.0f);
+    }
+    else
+    {
+        snprintf(swapOverlay, sizeof(swapOverlay), "No SWAP configured");
+    }
+    ImGui::ProgressBar(swapPercent, ImVec2(-1, 0), swapOverlay);
+
+    ImGui::Spacing();
 
     ImGui::End();
 }
