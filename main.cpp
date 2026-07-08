@@ -208,6 +208,49 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
 
     ImGui::Spacing();
 
+    // Tab Bar for Processes
+    if (ImGui::BeginTabBar("MemProcTabs"))
+    {
+        if (ImGui::BeginTabItem("Processes"))
+        {
+            ImGui::BeginChild("ProcTableChild", ImVec2(0, 0), true);
+            if (ImGui::BeginTable("ProcessTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY))
+            {
+                ImGui::TableSetupColumn("PID", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch);
+                ImGui::TableSetupColumn("State", ImGuiTableColumnFlags_WidthFixed, 50.0f);
+                ImGui::TableSetupColumn("CPU %", ImGuiTableColumnFlags_WidthFixed, 60.0f);
+                ImGui::TableSetupColumn("Memory %", ImGuiTableColumnFlags_WidthFixed, 70.0f);
+                ImGui::TableHeadersRow();
+
+                vector<Proc> processes = getProcesses(mem.ramTotal);
+                for (const auto &p : processes)
+                {
+                    ImGui::TableNextRow();
+                    
+                    ImGui::TableSetColumnIndex(0);
+                    ImGui::Text("%d", p.pid);
+                    
+                    ImGui::TableSetColumnIndex(1);
+                    ImGui::Text("%s", p.name.c_str());
+                    
+                    ImGui::TableSetColumnIndex(2);
+                    ImGui::Text("%c", p.state);
+                    
+                    ImGui::TableSetColumnIndex(3);
+                    ImGui::Text("%.1f%%", p.cpuUsage);
+                    
+                    ImGui::TableSetColumnIndex(4);
+                    ImGui::Text("%.1f%%", p.memUsage);
+                }
+                ImGui::EndTable();
+            }
+            ImGui::EndChild();
+            ImGui::EndTabItem();
+        }
+        ImGui::EndTabBar();
+    }
+
     ImGui::End();
 }
 

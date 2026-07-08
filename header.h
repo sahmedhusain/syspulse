@@ -64,6 +64,8 @@ struct Proc
     long long int rss;
     long long int utime;
     long long int stime;
+    float cpuUsage = 0.0f;
+    float memUsage = 0.0f;
 };
 
 struct IP4
@@ -147,6 +149,8 @@ struct DiskStats
 };
 
 DiskStats getDiskStats();
+
+vector<Proc> getProcesses(long long ramTotal);
 
 // student TODO : network
 
