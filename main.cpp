@@ -191,6 +191,23 @@ void memoryProcessesWindow(const char *id, ImVec2 size, ImVec2 position)
 
     ImGui::Spacing();
 
+    // Disk Progress Bar
+    DiskStats disk = getDiskStats();
+    float diskPercent = 0.0f;
+    if (disk.totalBytes > 0)
+    {
+        diskPercent = (float)disk.usedBytes / disk.totalBytes;
+    }
+    float diskUsedGB = (float)disk.usedBytes / (1024.0f * 1024.0f * 1024.0f);
+    float diskTotalGB = (float)disk.totalBytes / (1024.0f * 1024.0f * 1024.0f);
+
+    ImGui::Text("Disk Usage (Root /):");
+    char diskOverlay[64];
+    snprintf(diskOverlay, sizeof(diskOverlay), "%.2f / %.2f GB (%.1f%%)", diskUsedGB, diskTotalGB, diskPercent * 100.0f);
+    ImGui::ProgressBar(diskPercent, ImVec2(-1, 0), diskOverlay);
+
+    ImGui::Spacing();
+
     ImGui::End();
 }
 

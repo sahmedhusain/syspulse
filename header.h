@@ -140,6 +140,14 @@ struct MemoryStats
 
 MemoryStats getMemoryStats();
 
+struct DiskStats
+{
+    long long totalBytes = 0;
+    long long usedBytes = 0;
+};
+
+DiskStats getDiskStats();
+
 // student TODO : network
 
 #endif

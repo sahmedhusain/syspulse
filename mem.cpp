@@ -57,3 +57,15 @@ MemoryStats getMemoryStats()
     stats.swapUsed = 1ULL * 1024 * 1024 * 1024;
     return stats;
 }
+
+DiskStats getDiskStats()
+{
+    DiskStats stats;
+    struct statvfs buf;
+    if (statvfs("/", &buf) == 0)
+    {
+        stats.totalBytes = (long long)buf.f_blocks * buf.f_frsize;
+        stats.usedBytes = (long long)(buf.f_blocks - buf.f_bfree) * buf.f_frsize;
+    }
+    return stats;
+}
