@@ -48,28 +48,29 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
     ImGui::SetWindowSize(id, size);
     ImGui::SetWindowPos(id, position);
 
-    ImGui::Text("Operating System: %s", getOsName());
-    ImGui::Text("Hostname: %s", getHostName().c_str());
-    ImGui::Text("User Logged In: %s", getLoggedInUser().c_str());
-    ImGui::Text("CPU Type: %s", getCPUModel().c_str());
-    
+    ImGui::Text("OS: %s | Host: %s | User: %s", getOsName(), getHostName().c_str(), getLoggedInUser().c_str());
+    ImGui::Text("CPU Model: %s", getCPUModel().c_str());
+
     ImGui::Separator();
-    
+
     TaskCounts tasks = getTaskCounts();
-    ImGui::Text("Tasks: %d total", tasks.total);
-    ImGui::BulletText("Running: %d | Sleeping: %d | Stopped: %d | Zombie: %d",
-                      tasks.running, tasks.sleeping, tasks.stopped, tasks.zombie);
+    ImGui::Text("Tasks: %d total [ Running: %d | Sleeping: %d | Stopped: %d | Zombie: %d ]",
+                tasks.total, tasks.running, tasks.sleeping, tasks.stopped, tasks.zombie);
 
     ImGui::Separator();
 
-    // Shared graph controls
+    // Shared graph controls in a single row
     static bool stopAnimation = false;
     static float graphFPS = 5.0f; // Default 5 updates per second
     static float yScale = 100.0f; // Default scale is 0 to 100
 
-    ImGui::Checkbox("Pause Graph Animation", &stopAnimation);
-    ImGui::SliderFloat("Graph FPS", &graphFPS, 1.0f, 60.0f, "%.1f FPS");
-    ImGui::SliderFloat("Y Scale Limit", &yScale, 10.0f, 100.0f, "%.1f");
+    ImGui::Checkbox("Pause", &stopAnimation);
+    ImGui::SameLine();
+    ImGui::PushItemWidth(80.0f);
+    ImGui::SliderFloat("FPS", &graphFPS, 1.0f, 60.0f, "%.0f");
+    ImGui::SameLine();
+    ImGui::SliderFloat("Y Max", &yScale, 10.0f, 100.0f, "%.0f");
+    ImGui::PopItemWidth();
 
     // History buffers for CPU, Thermal, and Fan
     static std::vector<float> cpuHistory(100, 0.0f);
@@ -119,18 +120,17 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
             snprintf(overlayText, sizeof(overlayText), "Usage: %.1f%%", currentCPUVal);
             
             // Plot CPU lines
-            ImGui::PlotLines("CPU Usage", cpuHistory.data(), (int)cpuHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(-1, 150));
+            ImGui::PlotLines("CPU Usage", cpuHistory.data(), (int)cpuHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(-1, 120));
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Fan"))
         {
-            ImGui::Text("Status: %s", currentFanStats.status.c_str());
-            ImGui::Text("Level: %s", currentFanStats.level.c_str());
+            ImGui::Text("Status: %s | Level: %s", currentFanStats.status.c_str(), currentFanStats.level.c_str());
             char overlayText[32];
             snprintf(overlayText, sizeof(overlayText), "Speed: %d RPM", currentFanStats.speed);
             
             // Plot Fan lines
-            ImGui::PlotLines("Fan Speed", fanHistory.data(), (int)fanHistory.size(), 0, overlayText, 0.0f, yScale * 50.0f, ImVec2(-1, 150));
+            ImGui::PlotLines("Fan Speed", fanHistory.data(), (int)fanHistory.size(), 0, overlayText, 0.0f, yScale * 50.0f, ImVec2(-1, 120));
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Thermal"))
@@ -139,7 +139,7 @@ void systemWindow(const char *id, ImVec2 size, ImVec2 position)
             snprintf(overlayText, sizeof(overlayText), "Temp: %.1f C", currentThermalVal);
             
             // Plot Thermal lines
-            ImGui::PlotLines("Temperature", thermalHistory.data(), (int)thermalHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(-1, 150));
+            ImGui::PlotLines("Temperature", thermalHistory.data(), (int)thermalHistory.size(), 0, overlayText, 0.0f, yScale, ImVec2(-1, 120));
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
