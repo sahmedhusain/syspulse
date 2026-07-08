@@ -391,10 +391,28 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
                 }
                 ImGui::EndTable();
             }
+
+            ImGui::Spacing();
+            ImGui::Text("* Network Visual Usage (Receive/RX)");
+            double maxBytes = 2.0 * 1024.0 * 1024.0 * 1024.0; // 2 GB
+            for (const auto &pair : netStats)
+            {
+                const TX &rx = pair.second.first;
+                float fraction = (float)((double)rx.bytes / maxBytes);
+                if (fraction > 1.0f) fraction = 1.0f;
+                if (fraction < 0.0f) fraction = 0.0f;
+
+                ImGui::Text("%s", pair.first.c_str());
+                std::string formatted = formatBytes(rx.bytes);
+                ImGui::ProgressBar(fraction, ImVec2(ImGui::GetContentRegionAvail().x - 65.0f, 0), formatted.c_str());
+                ImGui::SameLine();
+                ImGui::Text("2.00 GB");
+            }
+
             ImGui::EndTabItem();
         }
 
-        if (ImGui::BeginTabItem("Receive(TX)"))
+        if (ImGui::BeginTabItem("Transmit(TX)")) // Let's fix the typo too, it should be "Transmit(TX)"
         {
             if (ImGui::BeginTable("TXTable", 9, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
             {
@@ -427,28 +445,27 @@ void networkWindow(const char *id, ImVec2 size, ImVec2 position)
                 }
                 ImGui::EndTable();
             }
+
+            ImGui::Spacing();
+            ImGui::Text("* Network Visual Usage (Transmit/TX)");
+            double maxBytes = 2.0 * 1024.0 * 1024.0 * 1024.0; // 2 GB
+            for (const auto &pair : netStats)
+            {
+                const RX &tx = pair.second.second;
+                float fraction = (float)((double)tx.bytes / maxBytes);
+                if (fraction > 1.0f) fraction = 1.0f;
+                if (fraction < 0.0f) fraction = 0.0f;
+
+                ImGui::Text("%s", pair.first.c_str());
+                std::string formatted = formatBytes(tx.bytes);
+                ImGui::ProgressBar(fraction, ImVec2(ImGui::GetContentRegionAvail().x - 65.0f, 0), formatted.c_str());
+                ImGui::SameLine();
+                ImGui::Text("2.00 GB");
+            }
+
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
-    }
-
-    ImGui::Spacing();
-
-    // Progress bars drawn directly below the tab bar, outside tabs
-    double maxBytes = 2.0 * 1024.0 * 1024.0 * 1024.0; // 2 GB
-    for (const auto &pair : netStats)
-    {
-        const TX &rx = pair.second.first; // RX data
-        float fraction = (float)((double)rx.bytes / maxBytes);
-        if (fraction > 1.0f) fraction = 1.0f;
-        if (fraction < 0.0f) fraction = 0.0f;
-
-        ImGui::Text("%s", pair.first.c_str());
-        std::string formatted = formatBytes(rx.bytes);
-        
-        ImGui::ProgressBar(fraction, ImVec2(ImGui::GetContentRegionAvail().x - 65.0f, 0), formatted.c_str());
-        ImGui::SameLine();
-        ImGui::Text("2.00 GB");
     }
 
     ImGui::End();
