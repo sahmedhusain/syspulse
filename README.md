@@ -33,6 +33,14 @@
 
 ---
 
+## 🖼️ Interface Demonstrations
+
+| CPU & System Hardware Telemetry | Memory Allocation & Process Table |
+| :---: | :---: |
+| ![System Hardware Telemetry](system.gif) | ![Memory & Process Table](mem.gif) |
+
+---
+
 ## 🏗️ System Architecture
 
 ```mermaid
@@ -55,10 +63,23 @@ graph TD
         Graphs[Vector Trend Line Plots & Sortable Tables]
     end
 
-    macOS & Linux & Win32 --> SystemMod & MemMod & NetMod
-    SystemMod & MemMod & NetMod --> ImGuiEngine
+    macOS --> SystemMod
+    Linux --> SystemMod
+    Win32 --> SystemMod
+    
+    macOS --> MemMod
+    Linux --> MemMod
+    Win32 --> MemMod
+    
+    macOS --> NetMod
+    Linux --> NetMod
+    Win32 --> NetMod
+
+    SystemMod --> ImGuiEngine
+    MemMod --> ImGuiEngine
+    NetMod --> ImGuiEngine
     ImGuiEngine --> Window --> Graphs
-```
+```,StartLine:36,TargetContent:
 
 ---
 
