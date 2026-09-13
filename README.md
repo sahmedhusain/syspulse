@@ -1,184 +1,150 @@
-# System Monitor Desktop 📊
+# 📊 SysPulse
 
 [![C++](https://img.shields.io/badge/C++-14-00599C?style=flat&logo=c%2B%2B)](https://cplusplus.com/)
-[![Dear ImGui](https://img.shields.io/badge/GUI-Dear%20ImGui-blueviolet)](#-how-the-code-works)
-[![Cross Platform](https://img.shields.io/badge/Platform-Windows%20|%20macOS%20|%20Linux-green)](#-how-the-code-works)
-[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
+[![Dear ImGui](https://img.shields.io/badge/GUI-Dear%20ImGui-blueviolet)](#-system-architecture)
+[![Cross Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-green)](#-setup--execution)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
 
-<p align="center">
-	<img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/cplusplus/cplusplus-original.svg" width="34" alt="C++" />
-</p>
-
-**System Monitor Desktop** is a lightweight, cross-platform utility written in C++ that visualizes your computer's performance metrics in real-time. Modeled after top-tier system task managers, it taps directly into deep OS metrics to render performance graphs and granular process lists using **Dear ImGui**.
+**SysPulse** is a lightweight, cross-platform hardware utility and system performance dashboard implemented in C++. Powered by **Dear ImGui** and SDL2/OpenGL3, SysPulse interfaces directly with OS kernel APIs to display real-time CPU utilization, thermal sensor readings, fan speeds, memory allocations, process tables, and network throughput graphs.
 
 ---
 
-## ⚡ What's cool about it?
+## ⚡ Key Highlights
 
-- **Cross-Platform Native Calls**: Written cleanly with `#ifdef` macros to leverage the absolute fastest APIs natively:
-  - **Linux**: `/proc` and `/sys` filesystem polling.
+- **Native Platform API Bridges**: Zero-overhead OS polling using platform-native system calls:
   - **macOS (Apple Silicon & Intel)**: `sysctl`, `mach`, `libproc`, and IOKit hardware bridges.
+  - **Linux**: `/proc` and `/sys` filesystem polling drivers.
   - **Windows (MinGW/MSVC)**: Win32 API (`psapi`, `iphlpapi`, `GetSystemTimes`).
-- **Immediate Mode GUI**: Powered by the industry-standard **Dear ImGui** (via SDL2/OpenGL3 backend) for a blazing fast, zero-overhead HUD.
-- **Granular Filtering**: Search and multi-select processes with live sorting. Easily track down memory hogs!
-- **Dynamic Graphical Overlays**: Live, tabbed performance tracking for CPU, Fans, and Thermal sensors. You can adjust the sample FPS, change the graph scale, and pause animations to inspect data points!
-- **Intelligent Network Tracking**: Network usage auto-scales nicely from Bytes to Gigabytes across independent RX/TX tabs.
+- **Immediate-Mode GUI Performance**: Built with Dear ImGui for hardware-accelerated 60 FPS HUD rendering.
+- **Interactive Process Manager**: Sortable process grid with search filtering, PID tracking, memory consumption metrics, and CPU usage percentages.
+- **Dynamic Graphical Overlays**: Real-time vector graphs tracking CPU history, thermal sensor temperatures (°C), and cooling fan RPMs with adjustable FPS sample rates.
+- **Auto-Scaling Network Monitor**: Dual-channel RX/TX network traffic visualization automatically scaling units from Bytes to Gigabytes.
 
 ---
 
 ## 📋 Table of Contents
 
-- [What's cool about it?](#-whats-cool-about-it)
-- [Quick Tour](#-quick-tour)
-- [Screenshots](#-screenshots)
-- [How the code works](#-how-the-code-works)
-  - [Game Logic & Flows](#-game-logic--flows)
-  - [Key Code Snippets](#-key-code-snippets)
-- [Running the app locally](#-running-the-app-locally)
-- [Authors](#-authors)
+- [Key Highlights](#-key-highlights)
+- [System Architecture](#-system-architecture)
+- [Hardware Polling & Rendering Cycle](#-hardware-polling--rendering-cycle)
+- [Setup & Execution](#-setup--execution)
+- [Project Directory Structure](#-project-directory-structure)
+- [License](#-license)
 
 ---
 
-## 🧭 Quick Tour
-
-1. **Launch**: Fire up the monitor using `make` and executing `./monitor`.
-2. **Observe Hardware**: Use the tabbed layout to investigate **CPU**, **Fan speeds (RPM)**, and **Thermals (°C)**. Tweak the sliders to modify how the graph tracks history.
-3. **Hunt Processes**: Check the memory tab to view Physical RAM, SWAP, and Disk consumption visually. Drop into the process table, click headers to sort (by PID, Name, Memory%, or CPU%), and multi-select the tasks you wish to monitor.
-4. **Network Flow**: Flip over to the Network layout to watch your RX/TX flows dynamically scale while you test your broadband.
-
-<p align="center">
-	<img src="https://capsule-render.vercel.app/api?type=rect&color=0:0EA5E9,100:111827&height=4&section=footer" width="100%" alt="Divider" />
-</p>
-
----
-
-## 📸 Screenshots
-
-*Below are placeholders for the interface screens. You can add your own screenshots here to showcase your project.*
-
-<div align="center">
-    <table>
-        <tr>
-            <td align="center" width="50%">
-                <img src="system.gif" alt="System Overview" width="100%" style="border: 2px solid #0EA5E9; border-radius: 8px;" />
-                <p><strong>Hardware Dashboard (CPU, Thermal, Fans)</strong></p>
-            </td>
-            <td align="center" width="50%">
-                <img src="mem.gif" alt="Memory & Processes" width="100%" style="border: 2px solid #0EA5E9; border-radius: 8px;" />
-                <p><strong>Interactive Process Filtering & Sorting</strong></p>
-            </td>
-        </tr>
-    </table>
-</div>
-
----
-
-## 🏗 How the code works
-
-The application runs in a fast polling loop. Using the `SDL` event handler, it draws frames immediately (as expected in Dear ImGui). Between frames, it requests system updates safely.
-
-### 📊 Data Architecture
-
-Instead of heavy object-oriented abstractions, we fetch plain C structs directly from the OS Kernel APIs and feed them immediately to the ImGui backend to render vectors:
+## 🏗️ System Architecture
 
 ```mermaid
-flowchart TD
-    OS[Operating System Kernel] -->|System Calls| API[Platform Native API]
-    API -->|macOS: mach / sysctl| Backend[App Backend]
-    API -->|Windows: psapi / Win32| Backend
-    API -->|Linux: /proc /sys| Backend
-    
-    Backend -->|Data Structs| Engine[Dear ImGui Renderer]
-    Engine -->|OpenGL3| Display[User Screen]
+graph TD
+    subgraph OSKernel["Operating System Kernel APIs"]
+        macOS["macOS: mach / sysctl / IOKit"]
+        Linux["Linux: /proc & /sys Virtual Filesystems"]
+        Win32["Windows: psapi / iphlpapi / Win32"]
+    end
+
+    subgraph Core["SysPulse C++ Telemetry Core"]
+        SystemMod[system.cpp - CPU & Thermals]
+        MemMod[mem.cpp - RAM & SWAP]
+        NetMod[network.cpp - Network RX/TX]
+    end
+
+    subgraph UI["Dear ImGui + SDL2 / OpenGL3 Layer"]
+        Window[SDL2 High-DPI Window Manager]
+        ImGuiEngine[ImGui Immediate Mode HUD]
+        Graphs[Vector Trend Line Plots & Sortable Tables]
+    end
+
+    macOS & Linux & Win32 --> SystemMod & MemMod & NetMod
+    SystemMod & MemMod & NetMod --> ImGuiEngine
+    ImGuiEngine --> Window --> Graphs
 ```
 
 ---
 
-### 💻 Key Code Snippets
+## 📐 Hardware Polling & Rendering Cycle
 
-#### 1. True Cross-Platform Memory Polling
-Our `getMemoryStats()` method gracefully pivots based on the OS it's being compiled on.
+```mermaid
+sequenceDiagram
+    participant OS as OS Kernel (mach / /proc / Win32)
+    participant Core as SysPulse C++ Backend
+    participant ImGui as Dear ImGui Renderer
+    participant GPU as OpenGL3 / SDL2 Window
 
-```cpp
-MemoryStats getMemoryStats()
-{
-    MemoryStats stats = {0, 0, 0, 0};
-
-#ifdef _WIN32
-    MEMORYSTATUSEX memInfo;
-    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
-    if (GlobalMemoryStatusEx(&memInfo)) {
-        stats.ramTotal = memInfo.ullTotalPhys;
-        stats.ramUsed = memInfo.ullTotalPhys - memInfo.ullAvailPhys;
-    }
-#endif
-
-#ifdef __APPLE__
-    int mib[2];
-    int64_t physical_memory;
-    size_t length = sizeof(int64_t);
-    mib[0] = CTL_HW; mib[1] = HW_MEMSIZE;
-    sysctl(mib, 2, &physical_memory, &length, NULL, 0);
-    stats.ramTotal = physical_memory;
-    // ...
-#endif
-
-    return stats;
-}
-```
-
-#### 2. Advanced Multi-select Table Rendering
-Using modern ImGui Tables, we build fluid sortable spreadsheets that track multiple highlighted elements efficiently:
-
-```cpp
-bool isSelected = (selectedPids.count(p.pid) > 0);
-if (ImGui::Selectable(pidStr, isSelected, ImGuiSelectableFlags_SpanAllColumns))
-{
-    if (ImGui::GetIO().KeyCtrl) {
-        if (isSelected) selectedPids.erase(p.pid);
-        else selectedPids.insert(p.pid);
-    } else {
-        selectedPids.clear();
-        selectedPids.insert(p.pid);
-    }
-}
+    loop 60 FPS Frame Loop
+        Core->>OS: Poll Hardware Stats (sysctl / GetSystemTimes)
+        OS-->>Core: Raw CPU, Memory, & Network Structs
+        Core->>Core: Compute Delta Percentages & Append Graph History
+        Core->>ImGui: NewFrame() & Pass Struct Data
+        ImGui->>ImGui: Render System, Memory, & Network Tabs
+        ImGui->>GPU: Draw Frame Buffer (OpenGL3)
+        GPU-->>GPU: Render Visual HUD on Screen
+    end
 ```
 
 ---
 
-## 🚀 Running the app locally
+## 🚀 Setup & Execution
 
-### Setup
-Ensure you have `g++` or `clang` and the `sdl2` library installed. 
+### Prerequisites
 
-**Linux**:
-```bash
-sudo apt-get install libsdl2-dev
+- **C++ Compiler**: `g++` or `clang++` (C++14 support).
+- **SDL2**: Library and headers installed.
+
+#### Installing SDL2 Dependencies:
+
+- **macOS**:
+  ```bash
+  brew install sdl2
+  ```
+- **Linux (Debian/Ubuntu)**:
+  ```bash
+  sudo apt-get install libsdl2-dev
+  ```
+- **Windows (MSYS2)**:
+  ```bash
+  pacman -S mingw-w64-x86_64-SDL2
+  ```
+
+---
+
+### Build & Run
+
+1. **Clone Repository**:
+   ```bash
+   git clone https://github.com/sahmedhusain/syspulse.git
+   cd syspulse
+   ```
+
+2. **Compile Application**:
+   ```bash
+   make clean
+   make
+   ```
+
+3. **Launch SysPulse**:
+   ```bash
+   ./syspulse
+   ```
+
+---
+
+## 📂 Project Directory Structure
+
 ```
-
-**macOS**:
-```bash
-brew install sdl2
-```
-
-**Windows (MSYS2)**:
-```bash
-pacman -S mingw-w64-i686-SDL2
-```
-
-### Launching the Monitor
-Just clean and make the executable!
-
-```bash
-make clean
-make
-./monitor
+syspulse/
+├── Makefile              # Cross-platform build script (macOS, Linux, Windows)
+├── README.md             # Project documentation
+├── header.h              # Unified cross-platform telemetry structs & API declarations
+├── main.cpp              # Application entrypoint & ImGui window coordinator
+├── system.cpp            # CPU, fan speed, & thermal sensor polling logic
+├── mem.cpp               # RAM, SWAP, & process table gathering logic
+├── network.cpp           # Bandwidth RX/TX network traffic tracking logic
+└── imgui/                # Dear ImGui library & OpenGL3/SDL2 backends
 ```
 
 ---
 
-## 👥 Authors
+## 📄 License
 
-- Sayed Ahmed Husain
-
-MIT licensed (see `LICENSE.md`). Happy monitoring!
+Distributed under the MIT License. See [LICENSE](LICENSE.md) for details.

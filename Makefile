@@ -14,7 +14,7 @@
 #CXX = g++
 #CXX = clang++
 
-EXE = monitor
+EXE = syspulse
 IMGUI_DIR = imgui/lib/
 SOURCES = main.cpp
 SOURCES += system.cpp
